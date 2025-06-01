@@ -630,10 +630,11 @@
         }
         
         function cleanString(value) {
+            if (value === null || typeof value === 'undefined') return 'N/A'; // Explicit category for missing
             if (typeof value === 'string') {
                 return value.replace(/^["']|["']$/g, '').trim(); 
             }
-            return value;
+            return String(value).trim(); // Ensure it's a string and trim
         }
 
         function redrawPlot() {
@@ -658,19 +659,10 @@
             if (!xCol || !yCol) { messageArea.textContent = "Select X and Y axes."; return; }
 
             const customDataForHover = df.map(row => {
-                const cleanedRow = {};
-                // Clean string fields that might be used in hover or labels
-                for (const key in row) {
-                    if (key === 'code' || key === 'region' || key === 'error' || key === pointLabelCol) {
-                         cleanedRow[key] = cleanString(row[key]);
-                    } else {
-                         cleanedRow[key] = row[key]; // Keep numbers as numbers
-                    }
-                }
                 return { 
-                    code: cleanedRow.code, 
-                    year: cleanedRow.year, 
-                    region: cleanedRow.region,
+                    code: cleanString(row.code), 
+                    year: row.year, 
+                    region: cleanString(row.region),
                     M: row.M, 
                     m: row.m, 
                     meanY: row.meanY, 
@@ -680,7 +672,7 @@
                     Y_r: row.Y_r, 
                     z_p: row.z_p, 
                     z_r: row.z_r, 
-                    errorDisplay: cleanedRow.error ? `<b>Error</b>: ${cleanedRow.error}<br>` : ""
+                    errorDisplay: row.error ? `<b>Error</b>: ${cleanString(row.error)}<br>` : ""
                 };
             });
 
@@ -702,7 +694,7 @@
                                `%{customdata.errorDisplay}` + 
                                `<extra></extra>`, 
                 type: 'scatter',
-                marker: { colorscale: 'Viridis' }
+                marker: {} 
             };
             
             if (pointLabelCol !== "None" && df.length > 0 && Object.keys(df[0]).includes(pointLabelCol)) {
@@ -714,13 +706,35 @@
                 trace.mode = 'markers';
             }
 
-            if (df.length > 0 && typeof df[0][colorCol] === 'number' && !isNaN(df[0][colorCol])) {
-                trace.marker.color = df.map(row => row[colorCol]);
-                trace.marker.showscale = true;
-            } else { 
-                trace.marker.color = df.map(row => typeof row[colorCol] === 'string' ? cleanString(row[colorCol]) : row[colorCol]);
-                trace.marker.showscale = false; 
+            // --- REVISED COLOR LOGIC ---
+            if (df.length > 0 && Object.keys(df[0]).includes(colorCol)) {
+                let isNumericScale;
+                if (colorCol === "region" || colorCol === "error") { 
+                    isNumericScale = false;
+                } else {
+                    const firstValidValue = df.find(row => row[colorCol] !== null && typeof row[colorCol] !== 'undefined');
+                    isNumericScale = firstValidValue && (typeof firstValidValue[colorCol] === 'number' && !isNaN(firstValidValue[colorCol]));
+                }
+
+                if (isNumericScale) {
+                    trace.marker.color = df.map(row => parseFloat(row[colorCol]));
+                    trace.marker.colorscale = 'Viridis'; 
+                    trace.marker.showscale = true;
+                } else { 
+                    const categories = df.map(row => cleanString(row[colorCol]));
+                    const uniqueCategories = [...new Set(categories)];
+                    const categoryIndices = categories.map(cat => uniqueCategories.indexOf(cat));
+                    
+                    trace.marker.color = categoryIndices; 
+                    delete trace.marker.colorscale; 
+                    trace.marker.showscale = false; 
+                }
+            } else {
+                trace.marker.color = 'rgba(0,0,0,0.5)'; 
+                delete trace.marker.colorscale;
+                trace.marker.showscale = false;
             }
+            // --- END OF REVISED COLOR LOGIC ---
             
             if (sizeCol !== "None" && df.length > 0 && Object.keys(df[0]).includes(sizeCol)) {
                 const rawSizesFromColumn = df.map(row => row[sizeCol]);
