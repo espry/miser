@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive MISER Plotter</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .plot-container { min-height: 600px; }
+        select, input[type="text"], input[type="file"], input[type="url"] {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #D1D5DB; /* gray-300 */
+            background-color: #F9FAFB; /* gray-50 */
+            color: #1F2937; /* gray-800 */
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            width: 100%; 
+        }
+        input[type="checkbox"] {
+            width: auto; 
+            margin-right: 0.25rem;
+        }
+        label {
+            margin-right: 0.25rem;
+            font-weight: 500;
+            display: block; 
+            margin-bottom: 0.25rem;
+        }
+        label.inline-label { 
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 0;
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            background-color: #4F46E5; /* indigo-600 */
+            color: white;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #4338CA; /* indigo-700 */
+        }
+        button:disabled {
+            background-color: #A5B4FC; /* indigo-300 */
+            cursor: not-allowed;
+        }
+        .control-section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid #E5E7EB; /* gray-200 */
+            border-radius: 0.5rem;
+            background-color: #F9FAFB; /* gray-50 */
+        }
+        .control-section h2 {
+            text-lg font-semibold mb-3 text-gray-700;
+        }
+        .data-source-option { margin-top: 0.5rem; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="container mx-auto bg-white p-6 rounded-lg shadow-xl">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-700">Interactive MISER Plotter</h1>
+
+        <div class="control-section">
+            <h2 class="text-lg font-semibold mb-3 text-gray-600">1. Load Data</h2>
+            <div class="data-source-option">
+                <label for="dataUrlInput" class="block text-sm font-medium text-gray-700">Load from Public URL (e.g., GitHub Raw CSV/TSV):</label>
+                <input type="url" id="dataUrlInput" placeholder="Enter direct URL to CSV/TSV file" class="mt-1 block w-full">
+            </div>
+            <p class="text-center my-2 text-sm text-gray-500">OR</p>
+            <div class="data-source-option">
+                <label for="csvFile" class="block text-sm font-medium text-gray-700">Upload File:</label>
+                <input type="file" id="csvFile" accept=".csv,.tsv,.txt" class="mt-1 block w-full">
+            </div>
+            <div class="mt-2">
+                <label for="csvSeparator" class="block text-sm font-medium text-gray-700">CSV/TSV Separator (e.g., "," or "\\t" for tab):</label>
+                <input type="text" id="csvSeparator" value="\t" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div>
+                    <label for="incomeColInput" class="block text-sm font-medium text-gray-700">Income Column Name:</label>
+                    <input type="text" id="incomeColInput" value="welf" class="mt-1 block w-full">
+                </div>
+                <div>
+                    <label for="weightColInput" class="block text-sm font-medium text-gray-700">Weight Column Name:</label>
+                    <input type="text" id="weightColInput" value="pop" class="mt-1 block w-full">
+                </div>
+                <div>
+                    <label for="regionColInput" class="block text-sm font-medium text-gray-700">Region Column Name:</label>
+                    <input type="text" id="regionColInput" value="region_pip" class="mt-1 block w-full">
+                </div>
+                 <div>
+                    <label for="groupColsInput" class="block text-sm font-medium text-gray-700">Group Columns (comma-separated):</label>
+                    <input type="text" id="groupColsInput" value="code,year" class="mt-1 block w-full">
+                </div>
+            </div>
+            <button id="loadDataButton" class="mt-4">Load and Process Data</button>
+            <p id="fileLoadStatus" class="text-sm text-gray-500 mt-2"></p>
+        </div>
+
+        <div class="control-section">
+            <h2 class="text-lg font-semibold mb-3 text-gray-600">2. MISER Parameters</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <label for="povRuleSelect" class="block text-sm font-medium text-gray-700">Poverty Rule:</label>
+                    <select id="povRuleSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="povParamInput" class="block text-sm font-medium text-gray-700">Poverty Param:</label>
+                    <input type="text" id="povParamInput" value="1 + 0.5*median" class="mt-1 block w-full">
+                </div>
+                <div>
+                    <label for="affRuleSelect" class="block text-sm font-medium text-gray-700">Affluence Rule:</label>
+                    <select id="affRuleSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="affParamInput" class="block text-sm font-medium text-gray-700">Affluence Param:</label>
+                    <input type="text" id="affParamInput" value="4*(1 + 0.5*median)" class="mt-1 block w-full">
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2 class="text-lg font-semibold mb-3 text-gray-600">3. Plot Controls</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                <div>
+                    <label for="regionFilterSelect" class="block text-sm font-medium text-gray-700">Filter Region (for Plot):</label>
+                    <select id="regionFilterSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="xSelect" class="block text-sm font-medium text-gray-700">X-axis:</label>
+                    <select id="xSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="ySelect" class="block text-sm font-medium text-gray-700">Y-axis:</label>
+                    <select id="ySelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="sizeSelect" class="block text-sm font-medium text-gray-700">Size:</label>
+                    <select id="sizeSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div>
+                    <label for="colorSelect" class="block text-sm font-medium text-gray-700">Color:</label>
+                    <select id="colorSelect" class="mt-1 block w-full"></select>
+                </div>
+                 <div>
+                    <label for="pointLabelSelect" class="block text-sm font-medium text-gray-700">Point Labels:</label>
+                    <select id="pointLabelSelect" class="mt-1 block w-full"></select>
+                </div>
+                <div class="flex items-center col-span-1 sm:col-span-1">
+                    <input type="checkbox" id="logXCheckbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <label for="logXCheckbox" class="ml-2 block text-sm text-gray-900 inline-label">Log X-axis</label>
+                </div>
+                <div class="flex items-center col-span-1 sm:col-span-1">
+                    <input type="checkbox" id="logYCheckbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <label for="logYCheckbox" class="ml-2 block text-sm text-gray-900 inline-label">Log Y-axis</label>
+                </div>
+            </div>
+            <button id="redrawPlotButton" class="mt-4" disabled>Redraw Plot</button>
+            <button id="downloadResultsButton" class="mt-4 ml-2" disabled>Download Plot Data (CSV)</button>
+        </div>
+
+        <div id="plotOutput" class="plot-container border border-gray-300 rounded-lg shadow-sm bg-white mt-6">
+             <div id="messageArea" class="p-4 text-center text-gray-500">Please load data to begin.</div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dataUrlInput = document.getElementById('dataUrlInput'); 
+        const csvFile = document.getElementById('csvFile');
+        const csvSeparatorInput = document.getElementById('csvSeparator');
+        const incomeColInput = document.getElementById('incomeColInput');
+        const weightColInput = document.getElementById('weightColInput');
+        const regionColInput = document.getElementById('regionColInput');
+        const groupColsInput = document.getElementById('groupColsInput');
+        const loadDataButton = document.getElementById('loadDataButton');
+        const fileLoadStatus = document.getElementById('fileLoadStatus');
+
+        const povRuleSelect = document.getElementById('povRuleSelect');
+        const povParamInput = document.getElementById('povParamInput');
+        const affRuleSelect = document.getElementById('affRuleSelect');
+        const affParamInput = document.getElementById('affParamInput');
+
+        const regionFilterSelect = document.getElementById('regionFilterSelect');
+        const xSelect = document.getElementById('xSelect');
+        const ySelect = document.getElementById('ySelect');
+        const sizeSelect = document.getElementById('sizeSelect');
+        const colorSelect = document.getElementById('colorSelect');
+        const pointLabelSelect = document.getElementById('pointLabelSelect'); 
+        const redrawPlotButton = document.getElementById('redrawPlotButton');
+        const downloadResultsButton = document.getElementById('downloadResultsButton');
+        const logXCheckbox = document.getElementById('logXCheckbox'); 
+        const logYCheckbox = document.getElementById('logYCheckbox'); 
+
+
+        const plotOutput = document.getElementById('plotOutput');
+        const messageArea = document.getElementById('messageArea');
+
+        // Global state
+        let df_all = []; 
+        let computed_panel_data = []; 
+        
+        let INCOME_COL = "welf";
+        let WEIGHT_COL = "pop";
+        let REGION_COL = "region_pip";
+        let GROUP_COLS = ["code", "year"];
+
+        const MISER_RULES = ["Fixed amount", "Percentile (e.g. 0.20)", "k × median", "k × mean", "Gini × mean × multiple", "Custom formula"];
+
+        // --- CSV Parsing and Data Handling ---
+        function parseCSV(text, separator) {
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) throw new Error("CSV must have a header and at least one data row.");
+            
+            const header = lines[0].split(separator).map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(separator).map(v => v.trim());
+                if (values.length === header.length) {
+                    const row = {};
+                    header.forEach((col, index) => {
+                        const val = values[index];
+                        row[col] = isNaN(parseFloat(val)) || !isFinite(val) ? val : parseFloat(val);
+                    });
+                    data.push(row);
+                }
+            }
+            return data;
+        }
+        
+        async function handleDataProcessing(dataText, sourceName) {
+            try {
+                const separator = csvSeparatorInput.value === "\\t" ? "\t" : csvSeparatorInput.value;
+                df_all = parseCSV(dataText, separator);
+                fileLoadStatus.textContent = `✅ Loaded data from ${sourceName} (${df_all.length} rows). Configure parameters and plot.`;
+                
+                const neededCols = [...new Set([...GROUP_COLS, REGION_COL, INCOME_COL, WEIGHT_COL])];
+                if (df_all.length > 0) {
+                    const firstRowCols = Object.keys(df_all[0]);
+                    for (const col of neededCols) {
+                        if (!firstRowCols.includes(col)) {
+                            throw new Error(`Data must contain column: ${col}. Found: ${firstRowCols.join(', ')}`);
+                        }
+                    }
+                } else {
+                     throw new Error("No data rows found in source.");
+                }
+
+                populateMiserRuleDropdowns();
+                processAndPlot(); 
+                redrawPlotButton.disabled = false;
+                downloadResultsButton.disabled = false;
+            } catch (e) {
+                console.error("Error processing data:", e);
+                fileLoadStatus.textContent = `⚠️ Error: ${e.message}`;
+                messageArea.textContent = `Error processing data: ${e.message}`;
+                df_all = [];
+                computed_panel_data = [];
+                redrawPlotButton.disabled = true;
+                downloadResultsButton.disabled = true;
+            }
+        }
+
+
+        loadDataButton.addEventListener('click', async () => { 
+            INCOME_COL = incomeColInput.value.trim();
+            WEIGHT_COL = weightColInput.value.trim();
+            REGION_COL = regionColInput.value.trim();
+            GROUP_COLS = groupColsInput.value.trim().split(',').map(s => s.trim());
+
+            const dataUrl = dataUrlInput.value.trim();
+
+            if (dataUrl) {
+                fileLoadStatus.textContent = `Fetching data from URL: ${dataUrl}...`;
+                try {
+                    const response = await fetch(dataUrl);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status} while fetching from URL.`);
+                    }
+                    const dataText = await response.text();
+                    handleDataProcessing(dataText, "URL");
+                } catch (e) {
+                    console.error("Error fetching or processing URL data:", e);
+                    fileLoadStatus.textContent = `⚠️ Error: ${e.message}`;
+                    messageArea.textContent = `Error fetching or processing data from URL: ${e.message}`;
+                    df_all = [];
+                    computed_panel_data = [];
+                    redrawPlotButton.disabled = true;
+                    downloadResultsButton.disabled = true;
+                }
+            } else if (csvFile.files && csvFile.files.length > 0) {
+                const file = csvFile.files[0];
+                const reader = new FileReader();
+                fileLoadStatus.textContent = `Loading file: ${file.name}...`;
+
+                reader.onload = (event) => {
+                    handleDataProcessing(event.target.result, `file "${file.name}"`);
+                };
+                reader.onerror = () => {
+                    fileLoadStatus.textContent = "⚠️ Error reading file.";
+                    console.error("FileReader error");
+                };
+                reader.readAsText(file);
+            } else {
+                fileLoadStatus.textContent = "⚠️ Please select a file or provide a URL.";
+                return;
+            }
+        });
+
+        function populateMiserRuleDropdowns() {
+            [povRuleSelect, affRuleSelect].forEach(select => {
+                select.innerHTML = "";
+                MISER_RULES.forEach(rule => {
+                    const option = new Option(rule, rule);
+                    select.add(option);
+                });
+            });
+            povRuleSelect.value = "Custom formula"; 
+            affRuleSelect.value = "Custom formula"; 
+        }
+
+
+        // --- Core MISER Logic ---
+        function gini(values, weights) {
+            if (!values || values.length === 0) return NaN;
+            const x = Array.from(values); 
+            const w = weights ? Array.from(weights) : Array(x.length).fill(1);
+            const sortedIndices = x.map((val, idx) => idx).sort((a, b) => x[a] - x[b]);
+            const sortedX = sortedIndices.map(idx => x[idx]);
+            const sortedW = sortedIndices.map(idx => w[idx]);
+            const wSum = sortedW.reduce((s, val) => s + val, 0);
+            if (wSum === 0) return NaN;
+            const xwProd = sortedX.reduce((s, val, idx) => s + val * sortedW[idx], 0);
+            if (xwProd === 0) return 0; 
+            const cumW = []; let currentW = 0;
+            for (const val of sortedW) { currentW += val; cumW.push(currentW); }
+            const cw = cumW.map(val => val / wSum);
+            const cumWX = []; let currentWX = 0;
+            for (let i = 0; i < sortedX.length; i++) { currentWX += sortedX[i] * sortedW[i]; cumWX.push(currentWX); }
+            const cwx = cumWX.map(val => val / xwProd);
+            let area = 0; const _cwx = [0, ...cwx]; const _cw = [0, ...cw];
+            for (let i = 0; i < _cw.length -1; i++) { area += (_cwx[i+1] + _cwx[i]) * (_cw[i+1] - _cw[i]) / 2; }
+            return 1 - 2 * area;
+        }
+        function calculateSeriesStats(seriesData, incomeCol, weightCol) {
+            const incomes = seriesData.map(d => d[incomeCol]);
+            const weights = seriesData.map(d => d[weightCol]);
+            const weightedSum = incomes.reduce((sum, val, idx) => sum + val * weights[idx], 0);
+            const weightSum = weights.reduce((sum, val) => sum + val, 0);
+            const meanY = weightSum > 0 ? weightedSum / weightSum : NaN;
+            const sortedIncomes = [...incomes].sort((a, b) => a - b);
+            const mid = Math.floor(sortedIncomes.length / 2);
+            const medY = sortedIncomes.length % 2 !== 0 ? sortedIncomes[mid] : (sortedIncomes[mid - 1] + sortedIncomes[mid]) / 2;
+            const gY = gini(incomes, weights);
+            return { meanY, medY, gY };
+        }
+        function evalFormulaJS(expr, mean, median, g) {
+            try {
+                const sanitizedExpr = expr.replace(/\bmedian\b/g, median).replace(/\bmean\b/g, mean).replace(/\bgini\b/g, g).replace(/\bnp\./g, 'Math.');
+                if (/[^0-9a-zA-Z\s\.\+\-\*\/\%\(\)Math]/.test(sanitizedExpr.replace(/Math\.(pow|sqrt|log|exp|sin|cos|tan|abs|PI|E)/g, ''))) {
+                     if (!/^\s*(\d+(\.\d+)?)\s*([\+\-\*\/]\s*(\d+(\.\d+)?)\s*)*$/.test(sanitizedExpr) && !/Math\.(pow|sqrt|log|exp|sin|cos|tan|abs)\(.*\)/.test(sanitizedExpr) && !/\d+(\.\d+)?\s*\*\s*\d+(\.\d+)?/.test(sanitizedExpr) && !/\d+(\.\d+)?\s*[\+\-]\s*\d+(\.\d+)?/.test(sanitizedExpr)) {
+                        throw new Error("Custom formula contains disallowed characters or complex structure.");
+                     }
+                }
+                return new Function(`return ${sanitizedExpr}`)();
+            } catch (e) { throw new Error(`Error in custom formula "${expr}": ${e.message}.`); }
+        }
+        function resolveCut(seriesData, rule, paramStr, incomeCol, weightCol) {
+            const { meanY, medY, gY } = calculateSeriesStats(seriesData, incomeCol, weightCol);
+            const param = parseFloat(paramStr); 
+            if (paramStr.trim() === "") throw new Error("Parameter cannot be blank.");
+            switch (rule) {
+                case "Fixed amount": if (isNaN(param)) throw new Error("Invalid number for Fixed amount parameter."); return param;
+                case "Percentile (e.g. 0.20)": if (isNaN(param) || param < 0 || param > 1) throw new Error("Percentile parameter must be between 0 and 1."); const incomes = seriesData.map(d => d[incomeCol]).sort((a,b)=>a-b); const index = Math.floor(param*(incomes.length-1)); return incomes[index];
+                case "k × median": if (isNaN(param)) throw new Error("Invalid number for k × median parameter."); return param * medY;
+                case "k × mean": if (isNaN(param)) throw new Error("Invalid number for k × mean parameter."); return param * meanY;
+                case "Gini × mean × multiple": if (isNaN(param)) throw new Error("Invalid number for Gini × mean × multiple parameter."); return param * gY * meanY;
+                case "Custom formula": return evalFormulaJS(paramStr, meanY, medY, gY);
+                default: throw new Error(`Unknown rule: ${rule}`);
+            }
+        }
+        function miserStats(sub, z_p, z_r, incomeCol, weightCol) {
+            const y = sub.map(d => d[incomeCol]); const w = sub.map(d => d[weightCol]);
+            const totalWeight = w.reduce((s, val) => s + val, 0);
+            if (totalWeight === 0) return { M: NaN, m: NaN, h_p: 0, h_r: 0, Y_p: NaN, Y_r: NaN, meanY: NaN, median: NaN, gini: NaN, z_p, z_r };
+            const poor_indices = y.reduce((acc,val,idx)=>(val<=z_p?acc.concat(idx):acc),[]); const rich_indices = y.reduce((acc,val,idx)=>(val>=z_r?acc.concat(idx):acc),[]);
+            const w_poor_sum = poor_indices.reduce((s,idx)=>s+w[idx],0); const w_rich_sum = rich_indices.reduce((s,idx)=>s+w[idx],0);
+            const h_p = w_poor_sum/totalWeight; const h_r = w_rich_sum/totalWeight;
+            const Y_p_num = poor_indices.reduce((s,idx)=>s+y[idx]*w[idx],0); const Y_p = h_p>0&&w_poor_sum>0?Y_p_num/w_poor_sum:NaN;
+            const Y_r_num = rich_indices.reduce((s,idx)=>s+y[idx]*w[idx],0); const Y_r = h_r>0&&w_rich_sum>0?Y_r_num/w_rich_sum:NaN;
+            const {meanY,medY,gY} = calculateSeriesStats(sub,incomeCol,weightCol);
+            const M = h_p*h_r*(Y_r-Y_p); const m = meanY!==0&&!isNaN(meanY)?M/meanY:NaN;
+            return {M,m,h_p,h_r,Y_p,Y_r,meanY,median:medY,gini:gY,z_p,z_r};
+        }
+        function computePanelJavaScript(data, rule_p, par_p, rule_r, par_r) {
+            if (!data || data.length === 0) return [];
+            const groupedData = {};
+            data.forEach(row => {
+                const groupKey = GROUP_COLS.map(col => row[col]).join('-');
+                if (!groupedData[groupKey]) { groupedData[groupKey] = {rows:[],meta:GROUP_COLS.reduce((obj,col)=>{obj[col]=row[col];return obj;},{}),region:row[REGION_COL]}; }
+                groupedData[groupKey].rows.push(row);
+            });
+            const results = [];
+            for (const key in groupedData) {
+                const group = groupedData[key];
+                try {
+                    const z_p = resolveCut(group.rows,rule_p,par_p,INCOME_COL,WEIGHT_COL); const z_r = resolveCut(group.rows,rule_r,par_r,INCOME_COL,WEIGHT_COL);
+                    let stats = miserStats(group.rows,z_p,z_r,INCOME_COL,WEIGHT_COL); stats = {...stats,...group.meta,region:group.region}; results.push(stats);
+                } catch (e) { console.warn(`Skipping group ${key}: ${e.message}`); results.push({...group.meta,region:group.region,M:NaN,m:NaN,error:e.message.substring(0,100)}); }
+            }
+            if (GROUP_COLS.length > 0) { results.sort((a,b)=>{for(const col of GROUP_COLS){if(a[col]<b[col])return -1;if(a[col]>b[col])return 1;}return 0;});}
+            return results;
+        }
+
+        // --- Plotting Logic ---
+        function populatePlotDropdowns(data) {
+            if (!data || data.length === 0) {
+                 [xSelect, ySelect, sizeSelect, colorSelect, regionFilterSelect, pointLabelSelect].forEach(sel => sel.innerHTML = ''); 
+                return;
+            }
+            const firstRow = data[0];
+            const allCols = Object.keys(firstRow);
+            const numericCols = allCols.filter(key => typeof firstRow[key] === 'number' && !isNaN(firstRow[key]));
+            
+            [xSelect, ySelect, sizeSelect, colorSelect, pointLabelSelect].forEach(sel => sel.innerHTML = ''); 
+
+            numericCols.forEach(col => {
+                xSelect.add(new Option(col, col));
+                ySelect.add(new Option(col, col));
+            });
+
+            sizeSelect.add(new Option("None", "None"));
+            numericCols.forEach(col => sizeSelect.add(new Option(col, col)));
+            
+            colorSelect.add(new Option("region", "region")); 
+            numericCols.forEach(col => colorSelect.add(new Option(col, col)));
+            if (allCols.includes("error")) { colorSelect.add(new Option("error", "error"));}
+
+            pointLabelSelect.add(new Option("None", "None"));
+            allCols.forEach(col => pointLabelSelect.add(new Option(col, col))); 
+
+            regionFilterSelect.innerHTML = '';
+            const regions = ["All", ...new Set(data.map(item => item.region))].sort();
+            regions.forEach(reg => regionFilterSelect.add(new Option(reg, reg)));
+
+            const safeDefault = (selectEl, preferred, fallback) => {
+                const options = Array.from(selectEl.options).map(opt => opt.value);
+                if (options.includes(preferred)) selectEl.value = preferred;
+                else if (options.includes(fallback)) selectEl.value = fallback;
+                else if (options.length > 0) selectEl.value = options[0];
+            };
+            
+            safeDefault(xSelect, "meanY", numericCols[0]);
+            safeDefault(ySelect, "m", numericCols.length > 1 ? numericCols[1] : numericCols[0]);
+            safeDefault(sizeSelect, "None", "None");
+            safeDefault(colorSelect, "region", "region");
+            safeDefault(pointLabelSelect, "code", "None"); 
+            regionFilterSelect.value = "All";
+        }
+        
+        // Helper function to clean string values by removing leading/trailing quotes
+        function cleanString(value) {
+            if (typeof value === 'string') {
+                return value.replace(/^["']|["']$/g, '').trim(); // Removes leading/trailing single or double quotes
+            }
+            return value;
+        }
+
+        function redrawPlot() {
+            if (computed_panel_data.length === 0) {
+                messageArea.textContent = "No data processed. Load data first.";
+                plotOutput.innerHTML = ''; plotOutput.appendChild(messageArea); return;
+            }
+            messageArea.textContent = "Updating plot...";
+            plotOutput.innerHTML = ''; plotOutput.appendChild(messageArea);
+
+            let df = [...computed_panel_data]; 
+            const selectedRegion = regionFilterSelect.value;
+            if (selectedRegion !== "All") { df = df.filter(row => row.region === selectedRegion); }
+
+            if (df.length === 0) { messageArea.textContent = "No rows for current filter."; return; }
+            messageArea.textContent = ""; 
+
+            const xCol = xSelect.value; const yCol = ySelect.value;
+            const sizeCol = sizeSelect.value; const colorCol = colorSelect.value;
+            const pointLabelCol = pointLabelSelect.value; 
+
+            if (!xCol || !yCol) { messageArea.textContent = "Select X and Y axes."; return; }
+
+            const customDataForHover = df.map(row => {
+                const cleanedRow = {};
+                for (const key in row) {
+                    cleanedRow[key] = cleanString(row[key]);
+                }
+                return { 
+                    code: cleanedRow.code, 
+                    year: cleanedRow.year, 
+                    region: cleanedRow.region,
+                    M: row.M, // Assuming M, m etc are already numbers or NaN
+                    m: row.m, 
+                    meanY: row.meanY, 
+                    median: row.median, 
+                    gini: row.gini, 
+                    Y_p: row.Y_p, 
+                    Y_r: row.Y_r, 
+                    z_p: row.z_p, 
+                    z_r: row.z_r, 
+                    errorDisplay: cleanedRow.error ? `<b>Error</b>: ${cleanedRow.error}<br>` : ""
+                };
+            });
+
+            const trace = {
+                x: df.map(row => row[xCol]),
+                y: df.map(row => row[yCol]),
+                customdata: customDataForHover, 
+                hovertemplate: `<b>${xCol === 'meanY' ? 'Mean Income' : xCol}</b>: %{x:.2f}<br>` + 
+                               `<b>${yCol === 'm' ? 'Rel. MISER (m)' : yCol}</b>: %{y:.3f}<br>` +
+                               `--------------------<br>` +
+                               `<b>Code</b>: %{customdata.code}<br>` + 
+                               `<b>Year</b>: %{customdata.year}<br>` +
+                               `<b>Region</b>: %{customdata.region}<br>` + 
+                               `<b>M</b>: %{customdata.M:.3f}<br>` +
+                               `<b>m</b>: %{customdata.m:.3f}<br>` +
+                               `<b>Mean Inc.</b>: %{customdata.meanY:.2f}<br>` +
+                               `<b>Median Inc.</b>: %{customdata.median:.2f}<br>` +
+                               `<b>Gini</b>: %{customdata.gini:.3f}<br>` +
+                               // Add other fields as desired, e.g.:
+                               // `<b>Y_p</b>: %{customdata.Y_p:.2f}<br>` +
+                               // `<b>Y_r</b>: %{customdata.Y_r:.2f}<br>` +
+                               `%{customdata.errorDisplay}` + 
+                               `<extra></extra>`, 
+                type: 'scatter',
+                marker: { colorscale: 'Viridis' }
+            };
+            
+            if (pointLabelCol !== "None" && df.length > 0 && Object.keys(df[0]).includes(pointLabelCol)) {
+                trace.mode = 'markers+text';
+                trace.text = df.map(row => cleanString(row[pointLabelCol])); // Cleaned persistent labels
+                trace.textposition = 'top center';
+                trace.textfont = { size: 10, color: 'dimgray' };
+            } else {
+                trace.mode = 'markers';
+            }
+
+            if (df.length > 0 && typeof df[0][colorCol] === 'number' && !isNaN(df[0][colorCol])) {
+                trace.marker.color = df.map(row => row[colorCol]);
+                trace.marker.showscale = true;
+            } else { 
+                trace.marker.color = df.map(row => cleanString(df.map(r => r[colorCol]))); // Clean color data if categorical
+                trace.marker.showscale = false; 
+            }
+            
+            if (sizeCol !== "None" && df.length > 0 && Object.keys(df[0]).includes(sizeCol)) {
+                const rawSizesFromColumn = df.map(row => row[sizeCol]);
+                const allNumericSizes = rawSizesFromColumn.map(s_val => parseFloat(s_val)); 
+                const validPositiveNumericSizes = allNumericSizes.filter(n => !isNaN(n) && n > 0);
+                if (validPositiveNumericSizes.length > 0) {
+                    const minSize = Math.min(...validPositiveNumericSizes);
+                    const maxSize = Math.max(...validPositiveNumericSizes);
+                    const desiredMaxBubblePixels = 50; const desiredMinBubblePixels = 5;   
+                    trace.marker.sizemode = 'diameter'; 
+                    if (maxSize === minSize) {
+                        trace.marker.size = allNumericSizes.map(n => (!isNaN(n) && n > 0) ? 15 : 3); 
+                        delete trace.marker.sizeref; 
+                    } else {
+                        trace.marker.size = allNumericSizes.map(n => {
+                            if (!isNaN(n) && n > 0) {
+                                if (maxSize === minSize) return desiredMinBubblePixels + (desiredMaxBubblePixels - desiredMinBubblePixels)/2; 
+                                const scaledSize = desiredMinBubblePixels + (n - minSize) * (desiredMaxBubblePixels - desiredMinBubblePixels) / (maxSize - minSize);
+                                return Math.max(desiredMinBubblePixels, scaledSize); 
+                            } return 3; 
+                        });
+                        delete trace.marker.sizeref; 
+                    }
+                } else { trace.marker.size = 5; }
+            } else { trace.marker.size = 10; }
+
+            const layout = {
+                title: `${yCol} vs ${xCol}` + (selectedRegion !== "All" ? ` (Region: ${selectedRegion})` : ""),
+                xaxis: { title: xCol, type: logXCheckbox.checked ? 'log' : 'linear' },
+                yaxis: { title: yCol, type: logYCheckbox.checked ? 'log' : 'linear' },
+                height: 600, margin: { l: 60, r: 30, b: 60, t: 80, pad: 4 }, autosize: true
+            };
+
+            Plotly.newPlot(plotOutput, [trace], layout, {responsive: true});
+        }
+        
+        function processAndPlot() {
+            if (df_all.length === 0) { messageArea.textContent = "Please load data first."; return; }
+            messageArea.textContent = "Processing data...";
+            try {
+                computed_panel_data = computePanelJavaScript(df_all, povRuleSelect.value, povParamInput.value.trim(), affRuleSelect.value, affParamInput.value.trim());
+                if (computed_panel_data.length === 0 && df_all.length > 0) { messageArea.textContent = "⚠️ Data processed, but result is empty. Check MISER parameters or input data structure.";}
+                else if (computed_panel_data.some(d => d.error)) { const errorCount = computed_panel_data.filter(d => d.error).length; messageArea.textContent = `Data processed with ${errorCount} group(s) encountering errors. Plotting available data. Check console for details.`;}
+                else { messageArea.textContent = "Data processed. Plot updated.";}
+                populatePlotDropdowns(computed_panel_data); redrawPlot();
+            } catch (e) {
+                console.error("Error during MISER computation:", e); messageArea.textContent = `⚠️ Error processing data: ${e.message}`;
+                computed_panel_data = []; populatePlotDropdowns([]); Plotly.purge(plotOutput); plotOutput.appendChild(messageArea);
+            }
+        }
+        
+        [povRuleSelect, povParamInput, affRuleSelect, affParamInput].forEach(el => { el.addEventListener('change', processAndPlot); if (el.type === 'text') el.addEventListener('input', processAndPlot); });
+        [regionFilterSelect, xSelect, ySelect, sizeSelect, colorSelect, logXCheckbox, logYCheckbox, pointLabelSelect].forEach(el => { el.addEventListener('change', redrawPlot); }); 
+        redrawPlotButton.addEventListener('click', processAndPlot);
+
+        downloadResultsButton.addEventListener('click', () => {
+            if (computed_panel_data.length === 0) { messageArea.textContent = "No data to download."; setTimeout(() => { if(messageArea.textContent === "No data to download.") messageArea.textContent = "";}, 3000); return; }
+            let dataToDownload = computed_panel_data; const selectedRegion = regionFilterSelect.value;
+            if (selectedRegion !== "All") { dataToDownload = computed_panel_data.filter(row => row.region === selectedRegion); }
+            if (dataToDownload.length === 0) { messageArea.textContent = `No data for region "${selectedRegion}" to download.`; setTimeout(() => { if(messageArea.textContent.startsWith("No data for region")) messageArea.textContent = "";}, 3000); return; }
+            const headers = Object.keys(dataToDownload[0]); let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+            dataToDownload.forEach(row => { const values = headers.map(header => { let val = row[header]; if (typeof val === 'string' && val.includes(',')) { return `"${val}"`; } return val; }); csvContent += values.join(",") + "\n"; });
+            const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "miser_plot_data.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+
+        function initialize() { populateMiserRuleDropdowns(); messageArea.textContent = "Please load a CSV/TSV file or provide a URL to begin.";}
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
