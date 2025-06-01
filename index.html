@@ -74,6 +74,44 @@
         .toggle-button:hover {
             background-color: #C7D2FE; /* indigo-300 */
         }
+        .readme-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #f9fafb; /* gray-50 */
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem;
+        }
+        .readme-section h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            color: #374151; /* gray-700 */
+            margin-bottom: 1rem;
+        }
+        .readme-section h4 {
+            font-size: 1.1rem; /* text-lg */
+            font-weight: 600; /* font-semibold */
+            color: #4b5563; /* gray-600 */
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .readme-section p, .readme-section ul {
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* gray-600 */
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+        .readme-section ul {
+            list-style-type: disc;
+            margin-left: 1.5rem;
+        }
+        .readme-section code {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #c026d3; /* fuchsia-600 for contrast */
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.8em;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
@@ -213,6 +251,73 @@
         <div id="plotOutput" class="plot-container border border-gray-300 rounded-lg shadow-sm bg-white mt-6">
              <div id="messageArea" class="p-4 text-center text-gray-500">Please load data to begin.</div>
         </div>
+
+        <div id="readmeSection" class="readme-section">
+            <h3>Tool Guide & Variable Definitions</h3>
+
+            <h4>How to Use This Tool:</h4>
+            <ol class="list-decimal ml-6 mb-4">
+                <li><strong>Load Data:</strong>
+                    <ul class="list-disc ml-6">
+                        <li><strong>From GitHub:</strong> Enter the Owner, Repository, and optionally a Folder Path. Click "List Files". Select a CSV file from the dropdown. The data will load automatically. (Default: espry/miser/data)</li>
+                        <li><strong>From URL:</strong> Paste a direct public URL to a CSV/TSV file into the "Load from Public URL" field.</li>
+                        <li><strong>Upload File:</strong> Click "Choose File" to upload a CSV/TSV file from your computer.</li>
+                        <li>Set the correct "CSV/TSV Separator" (e.g., <code>,</code> for comma, <code>\t</code> for tab).</li>
+                        <li>Verify the "Income Column Name", "Weight Column Name", "Region Column Name", and "Group Columns" (comma-separated, e.g., <code>code,year</code>) match your dataset.</li>
+                        <li>Click "Load and Process Data from URL or File". The heading "1. Load Data" will update to show the loaded file name.</li>
+                    </ul>
+                </li>
+                <li><strong>Set MISER Parameters:</strong>
+                    <ul class="list-disc ml-6">
+                        <li>Adjust the "Poverty Rule" & "Poverty Param" to define the poverty line ($z_p$).</li>
+                        <li>Adjust the "Affluence Rule" & "Affluence Param" to define the affluence line ($z_r$).</li>
+                        <li>The plot and underlying data will recompute automatically as you change these.</li>
+                    </ul>
+                </li>
+                <li><strong>Control the Plot:</strong>
+                    <ul class="list-disc ml-6">
+                        <li>Use the dropdowns to select variables for the X-axis, Y-axis, point Size, and point Color.</li>
+                        <li>Select a column for persistent "Point Labels" (e.g., country codes).</li>
+                        <li>Choose a "Filter Region" to view a subset of the data.</li>
+                        <li>Toggle "Log X-axis" and "Log Y-axis" for logarithmic scales.</li>
+                        <li>Click "Redraw Plot" if needed (though most changes update automatically).</li>
+                    </ul>
+                </li>
+                <li><strong>Download:</strong> Click "Download Plot Data (CSV)" to save the currently displayed (and filtered) data.</li>
+            </ol>
+
+            <h4>MISER Parameter Rules:</h4>
+            <p>The poverty ($z_p$) and affluence ($z_r$) lines can be defined using several rules:</p>
+            <ul>
+                <li><strong>Fixed amount:</strong> A direct monetary value (e.g., <code>1.90</code>).</li>
+                <li><strong>Percentile (e.g. 0.20):</strong> The income value at a given percentile of the distribution (e.g., <code>0.10</code> for the 10th percentile).</li>
+                <li><strong>k × median:</strong> A multiple of the median income (e.g., <code>0.5</code> for 50% of median).</li>
+                <li><strong>k × mean:</strong> A multiple of the mean income (e.g., <code>0.6</code> for 60% of mean).</li>
+                <li><strong>Gini × mean × multiple:</strong> A multiple of the product of the Gini coefficient and the mean income.</li>
+                <li><strong>Custom formula:</strong> A JavaScript-parsable mathematical expression using <code>mean</code>, <code>median</code>, <code>gini</code>, numbers, and basic arithmetic operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>). Example: <code>1 + 0.5*median</code>.</li>
+            </ul>
+
+            <h4>Calculated Variables (available for plotting):</h4>
+            <ul>
+                <li><code>code</code>: Identifier for the unit of observation (e.g., country code).</li>
+                <li><code>year</code>: Year of the observation.</li>
+                <li><code>region</code>: Region of the observation.</li>
+                <li><code>M</code>: Absolute Miser Index. Calculated as $M = h_p \cdot h_r \cdot (Y_r - Y_p)$. It reflects the product of the poor and rich headcounts and the income gap between the average rich and average poor.</li>
+                <li><code>m</code>: Relative Miser Index. Calculated as $m = M / \text{meanY}$. This normalizes the absolute miser index by the overall mean income of the distribution.</li>
+                <li><code>mHat</code> ($\hat m$): Modified Relative Miser Index. Calculated as $\hat m = M / Y_{(r+p)}$, where $Y_{(r+p)} = \frac{h_p Y_p + h_r Y_r}{h_p + h_r}$. This normalizes the absolute miser index by the weighted average income of only the poor and rich groups.</li>
+                <li><code>h_p</code>: Headcount ratio of the poor (proportion of population below $z_p$).</li>
+                <li><code>h_r</code>: Headcount ratio of the rich (proportion of population above $z_r$).</li>
+                <li><code>Y_p</code>: Average income of the poor.</li>
+                <li><code>Y_r</code>: Average income of the rich.</li>
+                <li><code>meanY</code>: Overall mean income of the distribution.</li>
+                <li><code>median</code>: Overall median income of the distribution (unweighted in current calculation).</li>
+                <li><code>gini</code>: Gini coefficient of income inequality for the distribution.</li>
+                <li><code>z_p</code>: Calculated poverty line based on the selected rule and parameter.</li>
+                <li><code>z_r</code>: Calculated affluence line based on the selected rule and parameter.</li>
+                <li><code>error</code>: If an error occurred during calculation for a specific group, this field will contain the error message.</li>
+            </ul>
+        </div>
+
     </div>
 
     <script>
@@ -557,7 +662,7 @@
         function miserStats(sub, z_p, z_r, incomeCol, weightCol) {
             const y = sub.map(d => d[incomeCol]); const w = sub.map(d => d[weightCol]);
             const totalWeight = w.reduce((s, val) => s + val, 0);
-            if (totalWeight === 0) return { M: NaN, m: NaN, h_p: 0, h_r: 0, Y_p: NaN, Y_r: NaN, meanY: NaN, median: NaN, gini: NaN, z_p, z_r };
+            if (totalWeight === 0) return { M: NaN, m: NaN, mHat: NaN, h_p: 0, h_r: 0, Y_p: NaN, Y_r: NaN, meanY: NaN, median: NaN, gini: NaN, z_p, z_r };
             const poor_indices = y.reduce((acc,val,idx)=>(val<=z_p?acc.concat(idx):acc),[]); const rich_indices = y.reduce((acc,val,idx)=>(val>=z_r?acc.concat(idx):acc),[]);
             const w_poor_sum = poor_indices.reduce((s,idx)=>s+w[idx],0); const w_rich_sum = rich_indices.reduce((s,idx)=>s+w[idx],0);
             const h_p = w_poor_sum/totalWeight; const h_r = w_rich_sum/totalWeight;
@@ -565,7 +670,16 @@
             const Y_r_num = rich_indices.reduce((s,idx)=>s+y[idx]*w[idx],0); const Y_r = h_r>0&&w_rich_sum>0?Y_r_num/w_rich_sum:NaN;
             const {meanY,medY,gY} = calculateSeriesStats(sub,incomeCol,weightCol);
             const M = h_p*h_r*(Y_r-Y_p); const m = meanY!==0&&!isNaN(meanY)?M/meanY:NaN;
-            return {M,m,h_p,h_r,Y_p,Y_r,meanY,median:medY,gini:gY,z_p,z_r};
+
+            // Calculate Y_(r+p) and mHat (Modified Relative Miser Index)
+            let Y_r_plus_p = NaN;
+            const Y_rp_denominator = h_p + h_r;
+            if (Y_rp_denominator > 0 && !isNaN(Y_p) && !isNaN(Y_r)) { // Make sure Y_p and Y_r are valid
+                Y_r_plus_p = ((h_p * Y_p) + (h_r * Y_r)) / Y_rp_denominator;
+            }
+            const mHat = (Y_r_plus_p !== 0 && !isNaN(Y_r_plus_p) && !isNaN(M)) ? M / Y_r_plus_p : NaN;
+
+            return {M,m,mHat,h_p,h_r,Y_p,Y_r,meanY,median:medY,gini:gY,z_p,z_r};
         }
         function computePanelJavaScript(data, rule_p, par_p, rule_r, par_r) {
             if (!data || data.length === 0) return [];
@@ -581,7 +695,7 @@
                 try {
                     const z_p = resolveCut(group.rows,rule_p,par_p,INCOME_COL,WEIGHT_COL); const z_r = resolveCut(group.rows,rule_r,par_r,INCOME_COL,WEIGHT_COL);
                     let stats = miserStats(group.rows,z_p,z_r,INCOME_COL,WEIGHT_COL); stats = {...stats,...group.meta,region:group.region}; results.push(stats);
-                } catch (e) { console.warn(`Skipping group ${key}: ${e.message}`); results.push({...group.meta,region:group.region,M:NaN,m:NaN,error:e.message.substring(0,100)}); }
+                } catch (e) { console.warn(`Skipping group ${key}: ${e.message}`); results.push({...group.meta,region:group.region,M:NaN,m:NaN,mHat:NaN,error:e.message.substring(0,100)}); }
             }
             if (GROUP_COLS.length > 0) { results.sort((a,b)=>{for(const col of GROUP_COLS){if(a[col]<b[col])return -1;if(a[col]>b[col])return 1;}return 0;});}
             return results;
@@ -669,6 +783,7 @@
                     region: cleanString(row.region),
                     M: row.M, 
                     m: row.m, 
+                    mHat: row.mHat, 
                     meanY: row.meanY, 
                     median: row.median, 
                     gini: row.gini, 
@@ -685,13 +800,14 @@
                 y: df.map(row => row[yCol]),
                 customdata: customDataForHover, 
                 hovertemplate: `<b>${xCol === 'meanY' ? 'Mean Income' : xCol}</b>: %{x:.2f}<br>` + 
-                               `<b>${yCol === 'm' ? 'Rel. MISER (m)' : yCol}</b>: %{y:.3f}<br>` +
+                               `<b>${yCol === 'm' ? 'Rel. MISER (m)' : (yCol === 'mHat' ? 'Mod. Rel. MISER (m̂)' : yCol)}</b>: %{y:.3f}<br>` +
                                `--------------------<br>` +
                                `<b>Code</b>: %{customdata.code}<br>` + 
                                `<b>Year</b>: %{customdata.year}<br>` +
                                `<b>Region</b>: %{customdata.region}<br>` + 
                                `<b>M</b>: %{customdata.M:.3f}<br>` +
                                `<b>m</b>: %{customdata.m:.3f}<br>` +
+                               `<b>m̂ (modified)</b>: %{customdata.mHat:.3f}<br>` + 
                                `<b>Mean Inc.</b>: %{customdata.meanY:.2f}<br>` +
                                `<b>Median Inc.</b>: %{customdata.median:.2f}<br>` +
                                `<b>Gini</b>: %{customdata.gini:.3f}<br>` +
