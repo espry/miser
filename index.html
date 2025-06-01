@@ -62,6 +62,18 @@
             text-lg font-semibold mb-3 text-gray-700;
         }
         .data-source-option { margin-top: 0.5rem; }
+        .github-loader { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;}
+        .toggle-button {
+            background-color: #E0E7FF; /* indigo-200 */
+            color: #3730A3; /* indigo-800 */
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem; /* text-xs */
+            border-radius: 0.25rem; /* rounded-sm */
+            margin-left: 0.5rem;
+        }
+        .toggle-button:hover {
+            background-color: #C7D2FE; /* indigo-300 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
@@ -69,40 +81,71 @@
         <h1 class="text-2xl font-bold mb-6 text-center text-gray-700">Interactive MISER Plotter</h1>
 
         <div class="control-section">
-            <h2 class="text-lg font-semibold mb-3 text-gray-600">1. Load Data</h2>
-            <div class="data-source-option">
-                <label for="dataUrlInput" class="block text-sm font-medium text-gray-700">Load from Public URL (e.g., GitHub Raw CSV/TSV):</label>
-                <input type="url" id="dataUrlInput" placeholder="Enter direct URL to CSV/TSV file" class="mt-1 block w-full">
+            <div class="flex justify-between items-center mb-3">
+                <h2 id="loadDataHeading" class="text-lg font-semibold text-gray-600">1. Load Data</h2>
+                <button id="toggleLoadDataSection" class="toggle-button">Show</button>
             </div>
-            <p class="text-center my-2 text-sm text-gray-500">OR</p>
-            <div class="data-source-option">
-                <label for="csvFile" class="block text-sm font-medium text-gray-700">Upload File:</label>
-                <input type="file" id="csvFile" accept=".csv,.tsv,.txt" class="mt-1 block w-full">
-            </div>
-            <div class="mt-2">
-                <label for="csvSeparator" class="block text-sm font-medium text-gray-700">CSV/TSV Separator (e.g., "," or "\\t" for tab):</label>
-                <input type="text" id="csvSeparator" value="\t" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <div>
-                    <label for="incomeColInput" class="block text-sm font-medium text-gray-700">Income Column Name:</label>
-                    <input type="text" id="incomeColInput" value="welf" class="mt-1 block w-full">
+            <div id="loadDataContent" class="hidden">
+                <div class="github-loader">
+                    <h3 class="text-md font-medium mb-2 text-gray-700">Load from GitHub Repository Folder:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                        <div>
+                            <label for="githubOwner" class="text-sm">Owner:</label>
+                            <input type="text" id="githubOwner" placeholder="e.g., username" class="mt-1" value="espry">
+                        </div>
+                        <div>
+                            <label for="githubRepo" class="text-sm">Repository:</label>
+                            <input type="text" id="githubRepo" placeholder="e.g., my-data-repo" class="mt-1" value="miser">
+                        </div>
+                        <div>
+                            <label for="githubPath" class="text-sm">Folder Path (optional):</label>
+                            <input type="text" id="githubPath" placeholder="e.g., data/csv_files" class="mt-1" value="data">
+                        </div>
+                    </div>
+                    <button id="listGithubFilesButton" class="text-sm py-1 px-3 mb-2">List Files</button>
+                    <div>
+                        <label for="githubFileSelect" class="text-sm">Select Dataset from GitHub:</label>
+                        <select id="githubFileSelect" class="mt-1 block w-full" disabled>
+                            <option value="">-- Select a file --</option>
+                        </select>
+                    </div>
+                    <p id="githubListStatus" class="text-xs text-gray-500 mt-1"></p>
                 </div>
-                <div>
-                    <label for="weightColInput" class="block text-sm font-medium text-gray-700">Weight Column Name:</label>
-                    <input type="text" id="weightColInput" value="pop" class="mt-1 block w-full">
+
+                <div class="data-source-option">
+                    <label for="dataUrlInput" class="block text-sm font-medium text-gray-700">Load from Public URL (auto-filled from GitHub selection):</label>
+                    <input type="url" id="dataUrlInput" placeholder="Or paste direct URL to CSV/TSV file" class="mt-1 block w-full">
                 </div>
-                <div>
-                    <label for="regionColInput" class="block text-sm font-medium text-gray-700">Region Column Name:</label>
-                    <input type="text" id="regionColInput" value="region_pip" class="mt-1 block w-full">
+                <p class="text-center my-2 text-sm text-gray-500">OR</p>
+                <div class="data-source-option">
+                    <label for="csvFile" class="block text-sm font-medium text-gray-700">Upload File:</label>
+                    <input type="file" id="csvFile" accept=".csv,.tsv,.txt" class="mt-1 block w-full">
                 </div>
-                 <div>
-                    <label for="groupColsInput" class="block text-sm font-medium text-gray-700">Group Columns (comma-separated):</label>
-                    <input type="text" id="groupColsInput" value="code,year" class="mt-1 block w-full">
+                <hr class="my-4"> <div>
+                    <label for="csvSeparator" class="block text-sm font-medium text-gray-700">CSV/TSV Separator (e.g., "," or "\\t" for tab):</label>
+                    <input type="text" id="csvSeparator" value="\t" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
-            </div>
-            <button id="loadDataButton" class="mt-4">Load and Process Data</button>
-            <p id="fileLoadStatus" class="text-sm text-gray-500 mt-2"></p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div>
+                        <label for="incomeColInput" class="block text-sm font-medium text-gray-700">Income Column Name:</label>
+                        <input type="text" id="incomeColInput" value="welf" class="mt-1 block w-full">
+                    </div>
+                    <div>
+                        <label for="weightColInput" class="block text-sm font-medium text-gray-700">Weight Column Name:</label>
+                        <input type="text" id="weightColInput" value="pop" class="mt-1 block w-full">
+                    </div>
+                    <div>
+                        <label for="regionColInput" class="block text-sm font-medium text-gray-700">Region Column Name:</label>
+                        <input type="text" id="regionColInput" value="region_pip" class="mt-1 block w-full">
+                    </div>
+                    <div>
+                        <label for="groupColsInput" class="block text-sm font-medium text-gray-700">Group Columns (comma-separated):</label>
+                        <input type="text" id="groupColsInput" value="code,year" class="mt-1 block w-full">
+                    </div>
+                </div>
+                <button id="loadDataButton" class="mt-4">Load and Process Data from URL or File</button>
+                <p id="fileLoadStatus" class="text-sm text-gray-500 mt-2"></p>
+            </div> 
         </div>
 
         <div class="control-section">
@@ -184,6 +227,20 @@
         const loadDataButton = document.getElementById('loadDataButton');
         const fileLoadStatus = document.getElementById('fileLoadStatus');
 
+        // GitHub Loader Elements
+        const githubOwnerInput = document.getElementById('githubOwner');
+        const githubRepoInput = document.getElementById('githubRepo');
+        const githubPathInput = document.getElementById('githubPath');
+        const listGithubFilesButton = document.getElementById('listGithubFilesButton');
+        const githubFileSelect = document.getElementById('githubFileSelect');
+        const githubListStatus = document.getElementById('githubListStatus');
+
+        // Toggle Button for Load Data Section
+        const toggleLoadDataSectionButton = document.getElementById('toggleLoadDataSection');
+        const loadDataContent = document.getElementById('loadDataContent');
+        const loadDataHeading = document.getElementById('loadDataHeading'); 
+
+
         const povRuleSelect = document.getElementById('povRuleSelect');
         const povParamInput = document.getElementById('povParamInput');
         const affRuleSelect = document.getElementById('affRuleSelect');
@@ -207,6 +264,7 @@
         // Global state
         let df_all = []; 
         let computed_panel_data = []; 
+        let currentLoadedSourceName = ""; 
         
         let INCOME_COL = "welf";
         let WEIGHT_COL = "pop";
@@ -214,6 +272,93 @@
         let GROUP_COLS = ["code", "year"];
 
         const MISER_RULES = ["Fixed amount", "Percentile (e.g. 0.20)", "k × median", "k × mean", "Gini × mean × multiple", "Custom formula"];
+
+        // --- Toggle Load Data Section ---
+        toggleLoadDataSectionButton.addEventListener('click', () => {
+            const isHidden = loadDataContent.classList.contains('hidden');
+            if (isHidden) {
+                loadDataContent.classList.remove('hidden');
+                toggleLoadDataSectionButton.textContent = 'Hide';
+            } else {
+                loadDataContent.classList.add('hidden');
+                toggleLoadDataSectionButton.textContent = 'Show';
+            }
+        });
+
+
+        // --- GitHub File Listing ---
+        listGithubFilesButton.addEventListener('click', async () => {
+            const owner = githubOwnerInput.value.trim();
+            const repo = githubRepoInput.value.trim();
+            const path = githubPathInput.value.trim();
+
+            if (!owner || !repo) {
+                githubListStatus.textContent = "⚠️ Owner and Repository are required.";
+                return;
+            }
+            githubListStatus.textContent = "Fetching file list...";
+            githubFileSelect.innerHTML = '<option value="">-- Fetching... --</option>';
+            githubFileSelect.disabled = true;
+
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`GitHub API error! Status: ${response.status}. Check repo details and path.`);
+                }
+                const filesData = await response.json(); 
+                
+                githubFileSelect.innerHTML = '<option value="">-- Select a file --</option>';
+                let csvFilesFound = []; 
+
+                if (Array.isArray(filesData)) {
+                    filesData.forEach(file => {
+                        if (file.type === "file" && file.name.toLowerCase().endsWith('.csv')) { 
+                            csvFilesFound.push({ name: file.name, download_url: file.download_url });
+                        }
+                    });
+                } else if (filesData.type === "file" && filesData.name.toLowerCase().endsWith('.csv')) { 
+                     csvFilesFound.push({ name: filesData.name, download_url: filesData.download_url });
+                }
+
+                if (csvFilesFound.length > 0) {
+                    csvFilesFound.forEach(file => {
+                        const option = document.createElement('option');
+                        option.value = file.download_url; 
+                        option.textContent = file.name;
+                        githubFileSelect.appendChild(option);
+                    });
+                    githubFileSelect.disabled = false;
+                    githubListStatus.textContent = `Found ${csvFilesFound.length} CSV file(s). Select one to load.`;
+                    
+                    githubFileSelect.selectedIndex = 1; 
+                    dataUrlInput.value = csvFilesFound[0].download_url;
+                    currentLoadedSourceName = csvFilesFound[0].name; 
+                    loadDataButton.click();
+
+                } else {
+                    githubListStatus.textContent = "No CSV files found in the specified folder.";
+                     githubFileSelect.innerHTML = '<option value="">-- No CSV files --</option>'; 
+                }
+
+            } catch (error) {
+                console.error("Error fetching GitHub file list:", error);
+                githubListStatus.textContent = `⚠️ Error: ${error.message}`;
+                githubFileSelect.innerHTML = '<option value="">-- Error fetching --</option>';
+            }
+        });
+
+        githubFileSelect.addEventListener('change', () => {
+            const selectedFileUrl = githubFileSelect.value;
+            if (selectedFileUrl) {
+                dataUrlInput.value = selectedFileUrl; 
+                const selectedOption = githubFileSelect.options[githubFileSelect.selectedIndex];
+                currentLoadedSourceName = selectedOption.textContent; 
+                loadDataButton.click(); 
+            }
+        });
+
 
         // --- CSV Parsing and Data Handling ---
         function parseCSV(text, separator) {
@@ -242,6 +387,7 @@
                 const separator = csvSeparatorInput.value === "\\t" ? "\t" : csvSeparatorInput.value;
                 df_all = parseCSV(dataText, separator);
                 fileLoadStatus.textContent = `✅ Loaded data from ${sourceName} (${df_all.length} rows). Configure parameters and plot.`;
+                loadDataHeading.textContent = `1. Load Data (${sourceName})`; 
                 
                 const neededCols = [...new Set([...GROUP_COLS, REGION_COL, INCOME_COL, WEIGHT_COL])];
                 if (df_all.length > 0) {
@@ -263,6 +409,7 @@
                 console.error("Error processing data:", e);
                 fileLoadStatus.textContent = `⚠️ Error: ${e.message}`;
                 messageArea.textContent = `Error processing data: ${e.message}`;
+                loadDataHeading.textContent = "1. Load Data"; 
                 df_all = [];
                 computed_panel_data = [];
                 redrawPlotButton.disabled = true;
@@ -277,21 +424,34 @@
             REGION_COL = regionColInput.value.trim();
             GROUP_COLS = groupColsInput.value.trim().split(',').map(s => s.trim());
 
-            const dataUrl = dataUrlInput.value.trim();
+            const dataUrl = dataUrlInput.value.trim(); 
+            let sourceNameToDisplay = "URL"; 
 
             if (dataUrl) {
-                fileLoadStatus.textContent = `Fetching data from URL: ${dataUrl}...`;
+                if (currentLoadedSourceName && dataUrlInput.value === githubFileSelect.value) { 
+                    sourceNameToDisplay = currentLoadedSourceName;
+                } else {
+                    try {
+                        const urlObj = new URL(dataUrl);
+                        sourceNameToDisplay = urlObj.pathname.split('/').pop() || "URL";
+                    } catch (_) {
+                        sourceNameToDisplay = "Pasted URL";
+                    }
+                }
+
+                fileLoadStatus.textContent = `Fetching data from ${sourceNameToDisplay}...`;
                 try {
                     const response = await fetch(dataUrl);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status} while fetching from URL.`);
                     }
                     const dataText = await response.text();
-                    handleDataProcessing(dataText, "URL");
+                    handleDataProcessing(dataText, sourceNameToDisplay);
                 } catch (e) {
                     console.error("Error fetching or processing URL data:", e);
                     fileLoadStatus.textContent = `⚠️ Error: ${e.message}`;
                     messageArea.textContent = `Error fetching or processing data from URL: ${e.message}`;
+                    loadDataHeading.textContent = "1. Load Data"; 
                     df_all = [];
                     computed_panel_data = [];
                     redrawPlotButton.disabled = true;
@@ -299,19 +459,21 @@
                 }
             } else if (csvFile.files && csvFile.files.length > 0) {
                 const file = csvFile.files[0];
-                const reader = new FileReader();
+                currentLoadedSourceName = file.name; 
                 fileLoadStatus.textContent = `Loading file: ${file.name}...`;
 
                 reader.onload = (event) => {
-                    handleDataProcessing(event.target.result, `file "${file.name}"`);
+                    handleDataProcessing(event.target.result, currentLoadedSourceName);
                 };
                 reader.onerror = () => {
                     fileLoadStatus.textContent = "⚠️ Error reading file.";
+                    loadDataHeading.textContent = "1. Load Data"; 
                     console.error("FileReader error");
                 };
                 reader.readAsText(file);
             } else {
                 fileLoadStatus.textContent = "⚠️ Please select a file or provide a URL.";
+                loadDataHeading.textContent = "1. Load Data"; 
                 return;
             }
         });
@@ -467,10 +629,9 @@
             regionFilterSelect.value = "All";
         }
         
-        // Helper function to clean string values by removing leading/trailing quotes
         function cleanString(value) {
             if (typeof value === 'string') {
-                return value.replace(/^["']|["']$/g, '').trim(); // Removes leading/trailing single or double quotes
+                return value.replace(/^["']|["']$/g, '').trim(); 
             }
             return value;
         }
@@ -498,14 +659,19 @@
 
             const customDataForHover = df.map(row => {
                 const cleanedRow = {};
+                // Clean string fields that might be used in hover or labels
                 for (const key in row) {
-                    cleanedRow[key] = cleanString(row[key]);
+                    if (key === 'code' || key === 'region' || key === 'error' || key === pointLabelCol) {
+                         cleanedRow[key] = cleanString(row[key]);
+                    } else {
+                         cleanedRow[key] = row[key]; // Keep numbers as numbers
+                    }
                 }
                 return { 
                     code: cleanedRow.code, 
                     year: cleanedRow.year, 
                     region: cleanedRow.region,
-                    M: row.M, // Assuming M, m etc are already numbers or NaN
+                    M: row.M, 
                     m: row.m, 
                     meanY: row.meanY, 
                     median: row.median, 
@@ -533,9 +699,6 @@
                                `<b>Mean Inc.</b>: %{customdata.meanY:.2f}<br>` +
                                `<b>Median Inc.</b>: %{customdata.median:.2f}<br>` +
                                `<b>Gini</b>: %{customdata.gini:.3f}<br>` +
-                               // Add other fields as desired, e.g.:
-                               // `<b>Y_p</b>: %{customdata.Y_p:.2f}<br>` +
-                               // `<b>Y_r</b>: %{customdata.Y_r:.2f}<br>` +
                                `%{customdata.errorDisplay}` + 
                                `<extra></extra>`, 
                 type: 'scatter',
@@ -544,7 +707,7 @@
             
             if (pointLabelCol !== "None" && df.length > 0 && Object.keys(df[0]).includes(pointLabelCol)) {
                 trace.mode = 'markers+text';
-                trace.text = df.map(row => cleanString(row[pointLabelCol])); // Cleaned persistent labels
+                trace.text = df.map(row => cleanString(row[pointLabelCol])); 
                 trace.textposition = 'top center';
                 trace.textfont = { size: 10, color: 'dimgray' };
             } else {
@@ -555,7 +718,7 @@
                 trace.marker.color = df.map(row => row[colorCol]);
                 trace.marker.showscale = true;
             } else { 
-                trace.marker.color = df.map(row => cleanString(df.map(r => r[colorCol]))); // Clean color data if categorical
+                trace.marker.color = df.map(row => typeof row[colorCol] === 'string' ? cleanString(row[colorCol]) : row[colorCol]);
                 trace.marker.showscale = false; 
             }
             
@@ -623,7 +786,14 @@
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "miser_plot_data.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         });
 
-        function initialize() { populateMiserRuleDropdowns(); messageArea.textContent = "Please load a CSV/TSV file or provide a URL to begin.";}
+        function initialize() { 
+            populateMiserRuleDropdowns(); 
+            messageArea.textContent = "Please load a CSV/TSV file or provide a URL to begin.";
+            // Optionally, auto-click the list files button if defaults are set
+            if (githubOwnerInput.value && githubRepoInput.value) {
+                listGithubFilesButton.click();
+            }
+        }
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
