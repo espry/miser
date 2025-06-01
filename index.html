@@ -322,6 +322,9 @@
                      csvFilesFound.push({ name: filesData.name, download_url: filesData.download_url });
                 }
 
+                // Sort CSV files alphabetically by name
+                csvFilesFound.sort((a, b) => a.name.localeCompare(b.name));
+
                 if (csvFilesFound.length > 0) {
                     csvFilesFound.forEach(file => {
                         const option = document.createElement('option');
@@ -332,6 +335,7 @@
                     githubFileSelect.disabled = false;
                     githubListStatus.textContent = `Found ${csvFilesFound.length} CSV file(s). Select one to load.`;
                     
+                    // Automatically select and load the first CSV file from the sorted list
                     githubFileSelect.selectedIndex = 1; 
                     dataUrlInput.value = csvFilesFound[0].download_url;
                     currentLoadedSourceName = csvFilesFound[0].name; 
@@ -630,11 +634,11 @@
         }
         
         function cleanString(value) {
-            if (value === null || typeof value === 'undefined') return 'N/A'; // Explicit category for missing
+            if (value === null || typeof value === 'undefined') return 'N/A'; 
             if (typeof value === 'string') {
                 return value.replace(/^["']|["']$/g, '').trim(); 
             }
-            return String(value).trim(); // Ensure it's a string and trim
+            return String(value).trim(); 
         }
 
         function redrawPlot() {
