@@ -1,11 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive MISER Plotter</title>
+    <title>Interactive Miser Plotter</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.tailwindcss.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .plot-container { min-height: 600px; }
@@ -112,6 +116,82 @@
             font-family: monospace;
             font-size: 0.8em;
         }
+        /* DataTables custom styling */
+        .dataTables_wrapper {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter {
+            margin-bottom: 1rem;
+        }
+        .dataTables_wrapper .dataTables_length select,
+        .dataTables_wrapper .dataTables_filter input {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #D1D5DB;
+            background-color: #F9FAFB;
+        }
+        .dataTables_wrapper table {
+            width: 100% !important;
+        }
+        .dataTables_wrapper th {
+            background-color: #F3F4F6;
+            font-weight: 600;
+            padding: 0.75rem;
+        }
+        .dataTables_wrapper td {
+            padding: 0.75rem;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 0.375rem;
+            border: 1px solid #D1D5DB;
+            background-color: white;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background-color: #4F46E5;
+            color: white !important;
+            border-color: #4F46E5;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background-color: #E5E7EB;
+            border-color: #D1D5DB;
+        }
+        /* Add styles for column filters */
+        .column-filter {
+            width: 100%;
+            padding: 0.25rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.25rem;
+            background-color: #F9FAFB;
+        }
+        .column-filter:focus {
+            outline: none;
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+        }
+        .dataTables_wrapper th {
+            position: relative;
+            padding-bottom: 3rem !important; /* Increased padding to prevent overlap */
+            white-space: nowrap; /* Prevent header text from wrapping */
+        }
+        .dataTables_wrapper th .column-filter {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 0.5rem;
+            right: 0.5rem;
+        }
+        /* Hide the global search since we're using column filters */
+        .dataTables_filter {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
@@ -195,7 +275,7 @@
                 </div>
                 <div>
                     <label for="povParamInput" class="block text-sm font-medium text-gray-700">Poverty Param:</label>
-                    <input type="text" id="povParamInput" value="1 + 0.5*median" class="mt-1 block w-full">
+                    <input type="text" id="povParamInput" value="1.15 + 0.5*median" class="mt-1 block w-full">
                 </div>
                 <div>
                     <label for="affRuleSelect" class="block text-sm font-medium text-gray-700">Affluence Rule:</label>
@@ -203,7 +283,7 @@
                 </div>
                 <div>
                     <label for="affParamInput" class="block text-sm font-medium text-gray-700">Affluence Param:</label>
-                    <input type="text" id="affParamInput" value="4*(1 + 0.5*median)" class="mt-1 block w-full">
+                    <input type="text" id="affParamInput" value="4*(1.15 + 0.5*median)" class="mt-1 block w-full">
                 </div>
             </div>
         </div>
@@ -250,6 +330,33 @@
 
         <div id="plotOutput" class="plot-container border border-gray-300 rounded-lg shadow-sm bg-white mt-6">
              <div id="messageArea" class="p-4 text-center text-gray-500">Please load data to begin.</div>
+        </div>
+
+        <div id="dataTableContainer" class="mt-6">
+            <table id="miserDataTable" class="display w-full">
+                <thead>
+                    <tr>
+                        <th>Country</th>
+                        <th>Code</th>
+                        <th>Year</th>
+                        <th>Region</th>
+                        <th>M</th>
+                        <th>m</th>
+                        <th>m̂</th>
+                        <th>Mean Income</th>
+                        <th>Median Income</th>
+                        <th>Gini</th>
+                        <th>Y_p</th>
+                        <th>Y_r</th>
+                        <th>z_p</th>
+                        <th>z_r</th>
+                        <th>h_p</th>
+                        <th>h_r</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
 
         <div id="readmeSection" class="readme-section">
@@ -370,6 +477,7 @@
         let df_all = []; 
         let computed_panel_data = []; 
         let currentLoadedSourceName = ""; 
+        let miserDataTable = null;
         
         let INCOME_COL = "welf";
         let WEIGHT_COL = "pop";
@@ -483,7 +591,12 @@
                     const row = {};
                     header.forEach((col, index) => {
                         const val = values[index];
-                        row[col] = isNaN(parseFloat(val)) || !isFinite(val) ? val : parseFloat(val);
+                        // Keep country as string, convert other numeric columns
+                        if (col.toLowerCase() === 'country') {
+                            row[col] = val;
+                        } else {
+                            row[col] = isNaN(parseFloat(val)) || !isFinite(val) ? val : parseFloat(val);
+                        }
                     });
                     data.push(row);
                 }
@@ -597,6 +710,8 @@
             });
             povRuleSelect.value = "Custom formula"; 
             affRuleSelect.value = "Custom formula"; 
+            povParamInput.value = "1.15 + 0.5*median";
+            affParamInput.value = "4*(1.15 + 0.5*median)";
         }
 
 
@@ -686,18 +801,52 @@
             const groupedData = {};
             data.forEach(row => {
                 const groupKey = GROUP_COLS.map(col => row[col]).join('-');
-                if (!groupedData[groupKey]) { groupedData[groupKey] = {rows:[],meta:GROUP_COLS.reduce((obj,col)=>{obj[col]=row[col];return obj;},{}),region:row[REGION_COL]}; }
+                if (!groupedData[groupKey]) { 
+                    groupedData[groupKey] = {
+                        rows:[],
+                        meta: GROUP_COLS.reduce((obj,col)=>{obj[col]=row[col];return obj;},{}),
+                        region: row[REGION_COL],
+                        country: row.country // Preserve country information
+                    }; 
+                }
                 groupedData[groupKey].rows.push(row);
             });
             const results = [];
             for (const key in groupedData) {
                 const group = groupedData[key];
                 try {
-                    const z_p = resolveCut(group.rows,rule_p,par_p,INCOME_COL,WEIGHT_COL); const z_r = resolveCut(group.rows,rule_r,par_r,INCOME_COL,WEIGHT_COL);
-                    let stats = miserStats(group.rows,z_p,z_r,INCOME_COL,WEIGHT_COL); stats = {...stats,...group.meta,region:group.region}; results.push(stats);
-                } catch (e) { console.warn(`Skipping group ${key}: ${e.message}`); results.push({...group.meta,region:group.region,M:NaN,m:NaN,mHat:NaN,error:e.message.substring(0,100)}); }
+                    const z_p = resolveCut(group.rows,rule_p,par_p,INCOME_COL,WEIGHT_COL); 
+                    const z_r = resolveCut(group.rows,rule_r,par_r,INCOME_COL,WEIGHT_COL);
+                    let stats = miserStats(group.rows,z_p,z_r,INCOME_COL,WEIGHT_COL); 
+                    stats = {
+                        ...stats,
+                        ...group.meta,
+                        region: group.region,
+                        country: group.country // Include country in results
+                    }; 
+                    results.push(stats);
+                } catch (e) { 
+                    console.warn(`Skipping group ${key}: ${e.message}`); 
+                    results.push({
+                        ...group.meta,
+                        region: group.region,
+                        country: group.country, // Include country even in error cases
+                        M: NaN,
+                        m: NaN,
+                        mHat: NaN,
+                        error: e.message.substring(0,100)
+                    }); 
+                }
             }
-            if (GROUP_COLS.length > 0) { results.sort((a,b)=>{for(const col of GROUP_COLS){if(a[col]<b[col])return -1;if(a[col]>b[col])return 1;}return 0;});}
+            if (GROUP_COLS.length > 0) { 
+                results.sort((a,b)=>{
+                    for(const col of GROUP_COLS){
+                        if(a[col]<b[col])return -1;
+                        if(a[col]>b[col])return 1;
+                    }
+                    return 0;
+                });
+            }
             return results;
         }
 
@@ -779,6 +928,7 @@
             const customDataForHover = df.map(row => {
                 return { 
                     code: cleanString(row.code), 
+                    country: cleanString(row.country || ''),
                     year: row.year, 
                     region: cleanString(row.region),
                     M: row.M, 
@@ -803,6 +953,7 @@
                                `<b>${yCol === 'm' ? 'Rel. MISER (m)' : (yCol === 'mHat' ? 'Mod. Rel. MISER (m̂)' : yCol)}</b>: %{y:.3f}<br>` +
                                `--------------------<br>` +
                                `<b>Code</b>: %{customdata.code}<br>` + 
+                               (customDataForHover[0].country ? `<b>Country</b>: %{customdata.country}<br>` : '') +
                                `<b>Year</b>: %{customdata.year}<br>` +
                                `<b>Region</b>: %{customdata.region}<br>` + 
                                `<b>M</b>: %{customdata.M:.3f}<br>` +
@@ -899,13 +1050,138 @@
                 if (computed_panel_data.length === 0 && df_all.length > 0) { messageArea.textContent = "⚠️ Data processed, but result is empty. Check MISER parameters or input data structure.";}
                 else if (computed_panel_data.some(d => d.error)) { const errorCount = computed_panel_data.filter(d => d.error).length; messageArea.textContent = `Data processed with ${errorCount} group(s) encountering errors. Plotting available data. Check console for details.`;}
                 else { messageArea.textContent = "Data processed. Plot updated.";}
-                populatePlotDropdowns(computed_panel_data); redrawPlot();
+                populatePlotDropdowns(computed_panel_data); 
+                redrawPlot();
+                updateDataTable();
             } catch (e) {
-                console.error("Error during MISER computation:", e); messageArea.textContent = `⚠️ Error processing data: ${e.message}`;
-                computed_panel_data = []; populatePlotDropdowns([]); Plotly.purge(plotOutput); plotOutput.appendChild(messageArea);
+                console.error("Error during MISER computation:", e); 
+                messageArea.textContent = `⚠️ Error processing data: ${e.message}`;
+                computed_panel_data = []; 
+                populatePlotDropdowns([]); 
+                Plotly.purge(plotOutput); 
+                plotOutput.appendChild(messageArea);
+                if (miserDataTable) {
+                    miserDataTable.clear().draw();
+                }
             }
         }
         
+        function updateDataTable() {
+            if (!computed_panel_data || computed_panel_data.length === 0) {
+                if (miserDataTable) {
+                    miserDataTable.clear().draw();
+                }
+                return;
+            }
+
+            // Format numbers for display
+            const formatNumber = (num) => {
+                if (num === null || num === undefined || isNaN(num)) return '';
+                return typeof num === 'number' ? num.toFixed(3) : num;
+            };
+
+            // Prepare data for DataTable
+            const tableData = computed_panel_data.map(row => [
+                cleanString(row.country || ''),
+                cleanString(row.code),
+                row.year,
+                cleanString(row.region),
+                formatNumber(row.M),
+                formatNumber(row.m),
+                formatNumber(row.mHat),
+                formatNumber(row.meanY),
+                formatNumber(row.median),
+                formatNumber(row.gini),
+                formatNumber(row.Y_p),
+                formatNumber(row.Y_r),
+                formatNumber(row.z_p),
+                formatNumber(row.z_r),
+                formatNumber(row.h_p),
+                formatNumber(row.h_r)
+            ]);
+
+            // Initialize or update DataTable
+            if (!miserDataTable) {
+                miserDataTable = $('#miserDataTable').DataTable({
+                    data: tableData,
+                    pageLength: -1, // Show all rows by default
+                    lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                    order: [[0, 'asc'], [2, 'asc']], // Sort by country and year by default
+                    dom: '<"flex justify-between items-center mb-4"l>rt<"flex justify-between items-center mt-4"ip>',
+                    language: {
+                        lengthMenu: "Show _MENU_ entries",
+                        info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                        paginate: {
+                            first: "«",
+                            previous: "‹",
+                            next: "›",
+                            last: "»"
+                        }
+                    },
+                    initComplete: function() {
+                        // Add column filters
+                        this.api().columns().every(function() {
+                            const column = this;
+                            const title = $(column.header()).text();
+                            
+                            // Create filter input
+                            const input = $('<input type="text" class="column-filter" placeholder="Filter ' + title + '">');
+                            $(column.header()).append(input);
+                            
+                            // Add event listeners for filtering
+                            input.on('keyup change', function() {
+                                if (column.search() !== this.value) {
+                                    column.search(this.value).draw();
+                                }
+                            });
+                        });
+                    }
+                });
+
+                // Add export button to the table
+                const exportButton = $('<button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Export CSV</button>');
+                exportButton.on('click', function() {
+                    const headers = [
+                        'Country', 'Code', 'Year', 'Region', 'M', 'm', 'm̂', 
+                        'Mean Income', 'Median Income', 'Gini',
+                        'Y_p', 'Y_r', 'z_p', 'z_r', 'h_p', 'h_r'
+                    ];
+                    
+                    // Get filtered data
+                    const filteredData = miserDataTable.rows({ search: 'applied' }).data();
+                    
+                    // Convert to CSV
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += headers.join(",") + "\n";
+                    
+                    filteredData.each(function(row) {
+                        const values = row.map(value => {
+                            // Handle values that might contain commas
+                            if (typeof value === 'string' && value.includes(',')) {
+                                return `"${value}"`;
+                            }
+                            return value;
+                        });
+                        csvContent += values.join(",") + "\n";
+                    });
+                    
+                    // Create download link
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "miser_data.csv");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+                $('.dataTables_length').after(exportButton);
+            } else {
+                miserDataTable.clear();
+                miserDataTable.rows.add(tableData);
+                miserDataTable.draw();
+            }
+        }
+
         [povRuleSelect, povParamInput, affRuleSelect, affParamInput].forEach(el => { el.addEventListener('change', processAndPlot); if (el.type === 'text') el.addEventListener('input', processAndPlot); });
         [regionFilterSelect, xSelect, ySelect, sizeSelect, colorSelect, logXCheckbox, logYCheckbox, pointLabelSelect].forEach(el => { el.addEventListener('change', redrawPlot); }); 
         redrawPlotButton.addEventListener('click', processAndPlot);
@@ -923,6 +1199,42 @@
         function initialize() { 
             populateMiserRuleDropdowns(); 
             messageArea.textContent = "Please load a CSV/TSV file or provide a URL to begin.";
+            // Initialize empty DataTable
+            miserDataTable = $('#miserDataTable').DataTable({
+                data: [],
+                pageLength: -1, // Show all rows by default
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                order: [[0, 'asc'], [2, 'asc']], // Sort by country and year by default
+                dom: '<"flex justify-between items-center mb-4"l>rt<"flex justify-between items-center mt-4"ip>',
+                language: {
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    paginate: {
+                        first: "«",
+                        previous: "‹",
+                        next: "›",
+                        last: "»"
+                    }
+                },
+                initComplete: function() {
+                    // Add column filters
+                    this.api().columns().every(function() {
+                        const column = this;
+                        const title = $(column.header()).text();
+                        
+                        // Create filter input
+                        const input = $('<input type="text" class="column-filter" placeholder="Filter ' + title + '">');
+                        $(column.header()).append(input);
+                        
+                        // Add event listeners for filtering
+                        input.on('keyup change', function() {
+                            if (column.search() !== this.value) {
+                                column.search(this.value).draw();
+                            }
+                        });
+                    });
+                }
+            });
             // Optionally, auto-click the list files button if defaults are set
             if (githubOwnerInput.value && githubRepoInput.value) {
                 listGithubFilesButton.click();
