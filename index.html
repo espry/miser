@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -270,20 +269,18 @@
             <h2 class="text-lg font-semibold mb-3 text-gray-600">2. MISER Parameters</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <div>
-                    <label for="povRuleSelect" class="block text-sm font-medium text-gray-700">Poverty Rule:</label>
-                    <select id="povRuleSelect" class="mt-1 block w-full"></select>
-                </div>
-                <div>
-                    <label for="povParamInput" class="block text-sm font-medium text-gray-700">Poverty Param:</label>
+                    <label for="povParamInput" class="block text-sm font-medium text-gray-700">Poverty Line:</label>
                     <input type="text" id="povParamInput" value="1.15 + 0.5*median" class="mt-1 block w-full">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Accepted: <b>1.90</b> (fixed), <b>p20</b> (20th percentile), <b>1.15 + 0.5*median</b> (formula)
+                    </p>
                 </div>
                 <div>
-                    <label for="affRuleSelect" class="block text-sm font-medium text-gray-700">Affluence Rule:</label>
-                    <select id="affRuleSelect" class="mt-1 block w-full"></select>
-                </div>
-                <div>
-                    <label for="affParamInput" class="block text-sm font-medium text-gray-700">Affluence Param:</label>
+                    <label for="affParamInput" class="block text-sm font-medium text-gray-700">Affluence Line:</label>
                     <input type="text" id="affParamInput" value="4*(1.15 + 0.5*median)" class="mt-1 block w-full">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Accepted: <b>100</b> (fixed), <b>p80</b> (80th percentile), <b>4*(1.15 + 0.5*median)</b> (formula)
+                    </p>
                 </div>
             </div>
         </div>
@@ -343,6 +340,7 @@
                         <th>M</th>
                         <th>m</th>
                         <th>m̂</th>
+                        <th>m̃</th>
                         <th>Mean Income</th>
                         <th>Median Income</th>
                         <th>Gini</th>
@@ -376,8 +374,7 @@
                 </li>
                 <li><strong>Set MISER Parameters:</strong>
                     <ul class="list-disc ml-6">
-                        <li>Adjust the "Poverty Rule" & "Poverty Param" to define the poverty line ($z_p$).</li>
-                        <li>Adjust the "Affluence Rule" & "Affluence Param" to define the affluence line ($z_r$).</li>
+                        <li>Adjust the "Poverty Line" & "Affluence Line" to define the poverty and affluence lines.</li>
                         <li>The plot and underlying data will recompute automatically as you change these.</li>
                     </ul>
                 </li>
@@ -394,7 +391,7 @@
             </ol>
 
             <h4>MISER Parameter Rules:</h4>
-            <p>The poverty ($z_p$) and affluence ($z_r$) lines can be defined using several rules:</p>
+            <p>The poverty and affluence lines can be defined using several rules:</p>
             <ul>
                 <li><strong>Fixed amount:</strong> A direct monetary value (e.g., <code>1.90</code>).</li>
                 <li><strong>Percentile (e.g. 0.20):</strong> The income value at a given percentile of the distribution (e.g., <code>0.10</code> for the 10th percentile).</li>
@@ -412,6 +409,7 @@
                 <li><code>M</code>: Absolute Miser Index. Calculated as $M = h_p \cdot h_r \cdot (Y_r - Y_p)$. It reflects the product of the poor and rich headcounts and the income gap between the average rich and average poor.</li>
                 <li><code>m</code>: Relative Miser Index. Calculated as $m = M / \text{meanY}$. This normalizes the absolute miser index by the overall mean income of the distribution.</li>
                 <li><code>mHat</code> ($\hat m$): Modified Relative Miser Index. Calculated as $\hat m = M / Y_{(r+p)}$, where $Y_{(r+p)} = \frac{h_p Y_p + h_r Y_r}{h_p + h_r}$. This normalizes the absolute miser index by the weighted average income of only the poor and rich groups.</li>
+                <li><code>mTilde</code> ($\tilde m$): Poverty-Line Relative Miser Index. Calculated as $\tilde m = M / z_p$. This normalizes the absolute miser index by the poverty line, providing a measure of polarization relative to the poverty threshold.</li>
                 <li><code>h_p</code>: Headcount ratio of the poor (proportion of population below $z_p$).</li>
                 <li><code>h_r</code>: Headcount ratio of the rich (proportion of population above $z_r$).</li>
                 <li><code>Y_p</code>: Average income of the poor.</li>
@@ -453,9 +451,7 @@
         const loadDataHeading = document.getElementById('loadDataHeading'); 
 
 
-        const povRuleSelect = document.getElementById('povRuleSelect');
         const povParamInput = document.getElementById('povParamInput');
-        const affRuleSelect = document.getElementById('affRuleSelect');
         const affParamInput = document.getElementById('affParamInput');
 
         const regionFilterSelect = document.getElementById('regionFilterSelect');
@@ -623,7 +619,6 @@
                      throw new Error("No data rows found in source.");
                 }
 
-                populateMiserRuleDropdowns();
                 processAndPlot(); 
                 redrawPlotButton.disabled = false;
                 downloadResultsButton.disabled = false;
@@ -700,21 +695,6 @@
             }
         });
 
-        function populateMiserRuleDropdowns() {
-            [povRuleSelect, affRuleSelect].forEach(select => {
-                select.innerHTML = "";
-                MISER_RULES.forEach(rule => {
-                    const option = new Option(rule, rule);
-                    select.add(option);
-                });
-            });
-            povRuleSelect.value = "Custom formula"; 
-            affRuleSelect.value = "Custom formula"; 
-            povParamInput.value = "1.15 + 0.5*median";
-            affParamInput.value = "4*(1.15 + 0.5*median)";
-        }
-
-
         // --- Core MISER Logic ---
         function gini(values, weights) {
             if (!values || values.length === 0) return NaN;
@@ -751,28 +731,44 @@
         }
         function evalFormulaJS(expr, mean, median, g) {
             try {
-                const sanitizedExpr = expr.replace(/\bmedian\b/g, median).replace(/\bmean\b/g, mean).replace(/\bgini\b/g, g).replace(/\bnp\./g, 'Math.');
+                // Fallbacks for undefined/NaN
+                if (typeof mean !== 'number' || isNaN(mean)) mean = 0;
+                if (typeof median !== 'number' || isNaN(median)) median = 0;
+                if (typeof g !== 'number' || isNaN(g)) g = 0;
+
+                let sanitizedExpr = expr.trim().replace(/\s+/g, ' ');
+                sanitizedExpr = sanitizedExpr.replace(/\bmedian\b/g, median)
+                                         .replace(/\bmean\b/g, mean)
+                                         .replace(/\bgini\b/g, g)
+                                         .replace(/\bnp\./g, 'Math.');
+                // Debug output
+                console.log('Evaluating formula:', sanitizedExpr, 'with mean:', mean, 'median:', median, 'gini:', g);
+
                 if (/[^0-9a-zA-Z\s\.\+\-\*\/\%\(\)Math]/.test(sanitizedExpr.replace(/Math\.(pow|sqrt|log|exp|sin|cos|tan|abs|PI|E)/g, ''))) {
-                     if (!/^\s*(\d+(\.\d+)?)\s*([\+\-\*\/]\s*(\d+(\.\d+)?)\s*)*$/.test(sanitizedExpr) && !/Math\.(pow|sqrt|log|exp|sin|cos|tan|abs)\(.*\)/.test(sanitizedExpr) && !/\d+(\.\d+)?\s*\*\s*\d+(\.\d+)?/.test(sanitizedExpr) && !/\d+(\.\d+)?\s*[\+\-]\s*\d+(\.\d+)?/.test(sanitizedExpr)) {
-                        throw new Error("Custom formula contains disallowed characters or complex structure.");
-                     }
+                    throw new Error("Custom formula contains disallowed characters or complex structure.");
                 }
                 return new Function(`return ${sanitizedExpr}`)();
-            } catch (e) { throw new Error(`Error in custom formula "${expr}": ${e.message}.`); }
+            } catch (e) { throw new Error(`Error in custom formula \"${expr}\": ${e.message}.`); }
         }
-        function resolveCut(seriesData, rule, paramStr, incomeCol, weightCol) {
+        function resolveCut(seriesData, paramStr, incomeCol, weightCol) {
             const { meanY, medY, gY } = calculateSeriesStats(seriesData, incomeCol, weightCol);
             const param = parseFloat(paramStr); 
             if (paramStr.trim() === "") throw new Error("Parameter cannot be blank.");
-            switch (rule) {
-                case "Fixed amount": if (isNaN(param)) throw new Error("Invalid number for Fixed amount parameter."); return param;
-                case "Percentile (e.g. 0.20)": if (isNaN(param) || param < 0 || param > 1) throw new Error("Percentile parameter must be between 0 and 1."); const incomes = seriesData.map(d => d[incomeCol]).sort((a,b)=>a-b); const index = Math.floor(param*(incomes.length-1)); return incomes[index];
-                case "k × median": if (isNaN(param)) throw new Error("Invalid number for k × median parameter."); return param * medY;
-                case "k × mean": if (isNaN(param)) throw new Error("Invalid number for k × mean parameter."); return param * meanY;
-                case "Gini × mean × multiple": if (isNaN(param)) throw new Error("Invalid number for Gini × mean × multiple parameter."); return param * gY * meanY;
-                case "Custom formula": return evalFormulaJS(paramStr, meanY, medY, gY);
-                default: throw new Error(`Unknown rule: ${rule}`);
+            // Percentile: pXX (e.g., p20 for 20th percentile)
+            const pctileMatch = paramStr.trim().match(/^p(\d{1,2}|100)$/i);
+            if (pctileMatch) {
+                const pct = parseInt(pctileMatch[1], 10) / 100;
+                const incomes = seriesData.map(d => d[incomeCol]).sort((a,b)=>a-b);
+                const index = Math.floor(pct*(incomes.length-1));
+                return incomes[index];
             }
+            // Try formula
+            if (/mean|median|gini|\+|\-|\*|\//.test(paramStr)) {
+                return evalFormulaJS(paramStr, meanY, medY, gY);
+            }
+            // Otherwise, treat as fixed value
+            if (!isNaN(param)) return param;
+            throw new Error("Invalid parameter format. Use a number, pXX for percentile, or a formula.");
         }
         function miserStats(sub, z_p, z_r, incomeCol, weightCol) {
             const y = sub.map(d => d[incomeCol]); const w = sub.map(d => d[weightCol]);
@@ -793,10 +789,13 @@
                 Y_r_plus_p = ((h_p * Y_p) + (h_r * Y_r)) / Y_rp_denominator;
             }
             const mHat = (Y_r_plus_p !== 0 && !isNaN(Y_r_plus_p) && !isNaN(M)) ? M / Y_r_plus_p : NaN;
+            
+            // Calculate m̃ (m tilda) - M divided by poverty line
+            const mTilde = (z_p !== 0 && !isNaN(z_p) && !isNaN(M)) ? M / z_p : NaN;
 
-            return {M,m,mHat,h_p,h_r,Y_p,Y_r,meanY,median:medY,gini:gY,z_p,z_r};
+            return {M,m,mHat,mTilde,h_p,h_r,Y_p,Y_r,meanY,median:medY,gini:gY,z_p,z_r};
         }
-        function computePanelJavaScript(data, rule_p, par_p, rule_r, par_r) {
+        function computePanelJavaScript(data, par_p, par_r) {
             if (!data || data.length === 0) return [];
             const groupedData = {};
             data.forEach(row => {
@@ -815,8 +814,8 @@
             for (const key in groupedData) {
                 const group = groupedData[key];
                 try {
-                    const z_p = resolveCut(group.rows,rule_p,par_p,INCOME_COL,WEIGHT_COL); 
-                    const z_r = resolveCut(group.rows,rule_r,par_r,INCOME_COL,WEIGHT_COL);
+                    const z_p = resolveCut(group.rows, par_p, INCOME_COL, WEIGHT_COL); 
+                    const z_r = resolveCut(group.rows, par_r, INCOME_COL, WEIGHT_COL);
                     let stats = miserStats(group.rows,z_p,z_r,INCOME_COL,WEIGHT_COL); 
                     stats = {
                         ...stats,
@@ -934,6 +933,7 @@
                     M: row.M, 
                     m: row.m, 
                     mHat: row.mHat, 
+                    mTilde: row.mTilde,
                     meanY: row.meanY, 
                     median: row.median, 
                     gini: row.gini, 
@@ -941,6 +941,8 @@
                     Y_r: row.Y_r, 
                     z_p: row.z_p, 
                     z_r: row.z_r, 
+                    h_p: row.h_p,
+                    h_r: row.h_r,
                     errorDisplay: row.error ? `<b>Error</b>: ${cleanString(row.error)}<br>` : ""
                 };
             });
@@ -951,6 +953,7 @@
                 customdata: customDataForHover, 
                 hovertemplate: `<b>${xCol === 'meanY' ? 'Mean Income' : xCol}</b>: %{x:.2f}<br>` + 
                                `<b>${yCol === 'm' ? 'Rel. MISER (m)' : (yCol === 'mHat' ? 'Mod. Rel. MISER (m̂)' : yCol)}</b>: %{y:.3f}<br>` +
+                               `<b>${yCol === 'mTilde' ? 'Rel. MISER (m̃)' : yCol}</b>: %{customdata.mTilde:.3f}<br>` +
                                `--------------------<br>` +
                                `<b>Code</b>: %{customdata.code}<br>` + 
                                (customDataForHover[0].country ? `<b>Country</b>: %{customdata.country}<br>` : '') +
@@ -958,7 +961,8 @@
                                `<b>Region</b>: %{customdata.region}<br>` + 
                                `<b>M</b>: %{customdata.M:.3f}<br>` +
                                `<b>m</b>: %{customdata.m:.3f}<br>` +
-                               `<b>m̂ (modified)</b>: %{customdata.mHat:.3f}<br>` + 
+                               `<b>m̂ (modified)</b>: %{customdata.mHat:.3f}<br>` +
+                               `<b>m̃ (tilda)</b>: %{customdata.mTilde:.3f}<br>` +
                                `<b>Mean Inc.</b>: %{customdata.meanY:.2f}<br>` +
                                `<b>Median Inc.</b>: %{customdata.median:.2f}<br>` +
                                `<b>Gini</b>: %{customdata.gini:.3f}<br>` +
@@ -1046,7 +1050,7 @@
             if (df_all.length === 0) { messageArea.textContent = "Please load data first."; return; }
             messageArea.textContent = "Processing data...";
             try {
-                computed_panel_data = computePanelJavaScript(df_all, povRuleSelect.value, povParamInput.value.trim(), affRuleSelect.value, affParamInput.value.trim());
+                computed_panel_data = computePanelJavaScript(df_all, povParamInput.value.trim(), affParamInput.value.trim());
                 if (computed_panel_data.length === 0 && df_all.length > 0) { messageArea.textContent = "⚠️ Data processed, but result is empty. Check MISER parameters or input data structure.";}
                 else if (computed_panel_data.some(d => d.error)) { const errorCount = computed_panel_data.filter(d => d.error).length; messageArea.textContent = `Data processed with ${errorCount} group(s) encountering errors. Plotting available data. Check console for details.`;}
                 else { messageArea.textContent = "Data processed. Plot updated.";}
@@ -1089,6 +1093,7 @@
                 formatNumber(row.M),
                 formatNumber(row.m),
                 formatNumber(row.mHat),
+                formatNumber(row.mTilde),
                 formatNumber(row.meanY),
                 formatNumber(row.median),
                 formatNumber(row.gini),
@@ -1142,7 +1147,7 @@
                 const exportButton = $('<button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Export CSV</button>');
                 exportButton.on('click', function() {
                     const headers = [
-                        'Country', 'Code', 'Year', 'Region', 'M', 'm', 'm̂', 
+                        'Country', 'Code', 'Year', 'Region', 'M', 'm', 'm̂', 'm̃',
                         'Mean Income', 'Median Income', 'Gini',
                         'Y_p', 'Y_r', 'z_p', 'z_r', 'h_p', 'h_r'
                     ];
@@ -1182,22 +1187,14 @@
             }
         }
 
-        [povRuleSelect, povParamInput, affRuleSelect, affParamInput].forEach(el => { el.addEventListener('change', processAndPlot); if (el.type === 'text') el.addEventListener('input', processAndPlot); });
-        [regionFilterSelect, xSelect, ySelect, sizeSelect, colorSelect, logXCheckbox, logYCheckbox, pointLabelSelect].forEach(el => { el.addEventListener('change', redrawPlot); }); 
-        redrawPlotButton.addEventListener('click', processAndPlot);
-
-        downloadResultsButton.addEventListener('click', () => {
-            if (computed_panel_data.length === 0) { messageArea.textContent = "No data to download."; setTimeout(() => { if(messageArea.textContent === "No data to download.") messageArea.textContent = "";}, 3000); return; }
-            let dataToDownload = computed_panel_data; const selectedRegion = regionFilterSelect.value;
-            if (selectedRegion !== "All") { dataToDownload = computed_panel_data.filter(row => row.region === selectedRegion); }
-            if (dataToDownload.length === 0) { messageArea.textContent = `No data for region "${selectedRegion}" to download.`; setTimeout(() => { if(messageArea.textContent.startsWith("No data for region")) messageArea.textContent = "";}, 3000); return; }
-            const headers = Object.keys(dataToDownload[0]); let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
-            dataToDownload.forEach(row => { const values = headers.map(header => { let val = row[header]; if (typeof val === 'string' && val.includes(',')) { return `"${val}"`; } return val; }); csvContent += values.join(",") + "\n"; });
-            const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "miser_plot_data.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        });
-
         function initialize() { 
-            populateMiserRuleDropdowns(); 
+            // Read URL parameters first
+            const urlParams = new URLSearchParams(window.location.search);
+            // Get URL parameter values (decode for safety)
+            const povParam = urlParams.get('povParam') ? decodeURIComponent(urlParams.get('povParam')) : null;
+            const affParam = urlParams.get('affParam') ? decodeURIComponent(urlParams.get('affParam')) : null;
+            if (povParam !== null) { povParamInput.value = povParam; }
+            if (affParam !== null) { affParamInput.value = affParam; }
             messageArea.textContent = "Please load a CSV/TSV file or provide a URL to begin.";
             // Initialize empty DataTable
             miserDataTable = $('#miserDataTable').DataTable({
@@ -1240,6 +1237,67 @@
                 listGithubFilesButton.click();
             }
         }
+
+        // Add URL parameter update function
+        function updateURLParameters() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('povParam', encodeURIComponent(povParamInput.value.trim()));
+            url.searchParams.set('affParam', encodeURIComponent(affParamInput.value.trim()));
+            window.history.replaceState({}, '', url);
+        }
+
+        [povParamInput, affParamInput].forEach(el => {
+            el.addEventListener('change', updateURLParameters);
+            el.addEventListener('input', updateURLParameters);
+        });
+
+        [regionFilterSelect, xSelect, ySelect, sizeSelect, colorSelect, logXCheckbox, logYCheckbox, pointLabelSelect].forEach(el => { 
+            el.addEventListener('change', redrawPlot); 
+        }); 
+        
+        redrawPlotButton.addEventListener('click', processAndPlot);
+
+        downloadResultsButton.addEventListener('click', () => {
+            if (computed_panel_data.length === 0) { 
+                messageArea.textContent = "No data to download."; 
+                setTimeout(() => { 
+                    if(messageArea.textContent === "No data to download.") messageArea.textContent = "";
+                }, 3000); 
+                return; 
+            }
+            let dataToDownload = computed_panel_data; 
+            const selectedRegion = regionFilterSelect.value;
+            if (selectedRegion !== "All") { 
+                dataToDownload = computed_panel_data.filter(row => row.region === selectedRegion); 
+            }
+            if (dataToDownload.length === 0) { 
+                messageArea.textContent = `No data for region "${selectedRegion}" to download.`; 
+                setTimeout(() => { 
+                    if(messageArea.textContent.startsWith("No data for region")) messageArea.textContent = "";
+                }, 3000); 
+                return; 
+            }
+            const headers = Object.keys(dataToDownload[0]); 
+            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+            dataToDownload.forEach(row => { 
+                const values = headers.map(header => { 
+                    let val = row[header]; 
+                    if (typeof val === 'string' && val.includes(',')) { 
+                        return `"${val}"`; 
+                    } 
+                    return val; 
+                }); 
+                csvContent += values.join(",") + "\n"; 
+            });
+            const encodedUri = encodeURI(csvContent); 
+            const link = document.createElement("a"); 
+            link.setAttribute("href", encodedUri); 
+            link.setAttribute("download", "miser_plot_data.csv"); 
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
+        });
+
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
